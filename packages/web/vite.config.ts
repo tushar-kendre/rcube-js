@@ -69,8 +69,8 @@ export default defineConfig({
               return 'react-three-utils'
             }
             
-            // React ecosystem - Keep all React modules together for compatibility
-            if (id.includes('react') || id.includes('scheduler')) {
+            // React ecosystem - Keep ALL React modules together for compatibility
+            if (id.includes('react') || id.includes('scheduler') || id.includes('use-sync-external-store')) {
               return 'react-core'
             }
             
