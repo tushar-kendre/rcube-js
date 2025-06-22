@@ -70,6 +70,7 @@ rcube-js/
 
 - `yarn dev` - Start development servers for all packages
 - `yarn build` - Build all packages for production
+- `yarn build:gh-pages` - Build web package for GitHub Pages deployment
 - `yarn format` - Format code with Prettier
 - `yarn commit` - Create conventional commits with Commitizen
 
@@ -79,6 +80,7 @@ Navigate to `packages/web/` and run:
 
 - `yarn dev` - Start development server
 - `yarn build` - Build for production
+- `yarn build:gh-pages` - Build for GitHub Pages deployment
 - `yarn preview` - Preview production build
 - `yarn test` - Run tests
 - `yarn test:watch` - Run tests in watch mode
@@ -105,6 +107,13 @@ yarn test:watch
 # Run tests once (CI mode)
 yarn test:run
 ```
+
+## 🚀 Deployment
+
+### GitHub Pages
+
+The project is configured for automatic deployment to GitHub Pages via GitHub Actions. The deployment happens automatically when you push to the `main` branch.
+
 
 ## 🏗️ Tech Stack
 
