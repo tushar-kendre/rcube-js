@@ -9,6 +9,8 @@ export default defineConfig({
   base: process.env.VITE_BASE_PATH || '/',
   plugins: [
     react({
+      // Ensure React is handled consistently
+      jsxRuntime: 'automatic',
       // Enable React optimization
       babel: {
         plugins: [
@@ -22,106 +24,40 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "./src"),
-      // Ensure React modules resolve correctly
-      "react": "react",
-      "react-dom": "react-dom"
     },
+    // Ensure consistent module resolution
+    dedupe: ['react', 'react-dom', 'three']
   },
   build: {
     // Enable CSS code splitting
     cssCodeSplit: true,
     // Target modern browsers for smaller bundles
     target: 'es2020',
+    // Ensure proper module handling
+    modulePreload: {
+      polyfill: false
+    },
     rollupOptions: {
+      // Ensure no external dependencies that could cause module splitting
+      external: [],
       output: {
-        // More aggressive chunking strategy
+        // Ultra-safe chunking strategy - keep React with everything that might use it
         manualChunks: (id) => {
           if (id.includes('node_modules')) {
-            // Three.js core - split into smaller chunks
-            if (id.includes('three/build/three')) {
+            // Three.js ecosystem - keep separate but ensure no React dependencies
+            if (id.includes('three') && !id.includes('@react-three') && !id.includes('react')) {
               return 'three-core'
             }
-            if (id.includes('three/examples/jsm')) {
-              return 'three-examples'
-            }
-            if (id.includes('three') && !id.includes('@react-three')) {
-              return 'three-addons'
-            }
             
-            // React Three ecosystem - more granular splitting
-            if (id.includes('@react-three/fiber')) {
-              return 'react-three-fiber'
-            }
-            if (id.includes('@react-three/drei')) {
-              // Split drei by functionality
-              if (id.includes('controls') || id.includes('Controls')) {
-                return 'react-three-controls'
-              }
-              if (id.includes('helpers') || id.includes('Helpers')) {
-                return 'react-three-helpers'
-              }
-              if (id.includes('loaders') || id.includes('Loaders')) {
-                return 'react-three-loaders'
-              }
-              if (id.includes('materials') || id.includes('Materials')) {
-                return 'react-three-materials'
-              }
-              return 'react-three-utils'
-            }
-            
-            // React ecosystem - Keep ALL React modules together for compatibility
-            if (id.includes('react') || id.includes('scheduler') || id.includes('use-sync-external-store')) {
-              return 'react-core'
-            }
-            
-            // UI Libraries - split by size
-            if (id.includes('@radix-ui')) {
-              // Group smaller radix components together
-              if (id.includes('dialog') || id.includes('dropdown') || id.includes('navigation')) {
-                return 'radix-ui-complex'
-              }
-              return 'radix-ui-simple'
-            }
-            
-            // Animation and gesture libraries
-            if (id.includes('@use-gesture') || id.includes('motion') || id.includes('framer')) {
-              return 'animation-libs'
-            }
-            
-            // Utility libraries by size
-            if (id.includes('lodash') || id.includes('ramda') || id.includes('immutable')) {
-              return 'utils-heavy'
-            }
-            if (id.includes('clsx') || id.includes('class-variance-authority') || 
-                id.includes('tailwind-merge')) {
-              return 'utils-styling'
-            }
-            if (id.includes('lucide-react')) {
-              return 'icons'
-            }
-            
-            // Math and 3D utilities
-            if (id.includes('gl-matrix') || id.includes('cannon') || id.includes('ammo')) {
-              return 'math-physics'
-            }
-            
-            // Everything else - be more conservative with grouping
-            const packageName = id.split('node_modules/')[1]?.split('/')[0]
-            if (packageName) {
-              // Don't group critical packages
-              if (['use-sync-external-store', 'tiny-invariant'].includes(packageName)) {
-                return `vendor-${packageName}`
-              }
-              // Group only truly small utility packages
-              const verySmallPackages = ['clsx', 'class-variance-authority', 'tailwind-merge']
-              if (verySmallPackages.includes(packageName)) {
-                return 'vendor-utils'
-              }
-            }
-            
-            return 'vendor-misc'
+            // EVERYTHING else goes with React to prevent any cross-chunk React access
+            // This includes @react-three, @radix-ui, lucide-react, and all other UI libs
+            return 'react-vendor'
           }
         },
+        // Ensure consistent module format
+        format: 'es',
+        // Prevent hoisting that could cause issues
+        hoistTransitiveImports: false,
         // Optimize chunk names and hashing
         chunkFileNames: () => {
           return `assets/[name]-[hash].js`
@@ -151,16 +87,30 @@ export default defineConfig({
       transformMixedEsModules: true
     }
   },
-  // Optimize dev server
+  // Optimize dev server and prevent module issues
   optimizeDeps: {
     include: [
       'react',
       'react-dom',
       'react-dom/client',
+      'react/jsx-runtime',
+      'react/jsx-dev-runtime',
+      'scheduler',
+      'use-sync-external-store',
       'three',
       '@react-three/fiber',
-      '@react-three/drei'
+      '@react-three/drei',
+      '@radix-ui/react-slot',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      'lucide-react'
     ],
-    exclude: ['lucide-react']
+    // Force all React-related modules to be pre-bundled together
+    force: true
+  },
+  // Additional configuration to prevent React splitting
+  define: {
+    // Ensure React is available globally to prevent undefined issues
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production')
   }
 })
