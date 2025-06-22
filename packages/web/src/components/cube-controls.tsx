@@ -6,8 +6,10 @@ import { useEffect, useState } from "react";
  * Props interface for the CubeControls component
  */
 interface CubeControlsProps {
-  /** Whether cube is currently animating moves */
+  /** Whether cube is currently busy (animating moves or has queued moves) */
   isAnimating: boolean;
+  /** Whether animations can be stopped (true when actively animating or has queued moves) */
+  canStopAnimation: boolean;
   /** Function to execute a single move */
   executeMove: (move: MoveNotation) => void;
   /** Function to execute a sequence of moves */
@@ -56,6 +58,7 @@ const moves: MoveNotation[] = [
  */
 export default function CubeControls({
   isAnimating,
+  canStopAnimation,
   executeMove,
   executeMoves,
   resetCube,
@@ -216,7 +219,7 @@ export default function CubeControls({
         </button>
         <button
           onClick={stopAnimation}
-          disabled={!isAnimating}
+          disabled={!canStopAnimation}
           className="w-full px-4 py-2 bg-muted text-muted-foreground rounded disabled:opacity-50"
         >
           Stop Animation

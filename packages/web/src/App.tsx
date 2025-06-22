@@ -60,6 +60,7 @@ function App() {
     stopAnimation,
     resetCube,
     isAnimating,
+    isBusy, // New property that stays true throughout entire sequences
   } = useCubePieceAnimation({
     initialState,
     animationDuration: 600,
@@ -152,7 +153,8 @@ function App() {
           }
         >
           <CubeControls
-            isAnimating={isAnimating}
+            isAnimating={isBusy} // Use isBusy to keep controls disabled throughout sequences
+            canStopAnimation={isBusy} // Can stop when busy (animating or has queued moves)
             executeMove={executeMove}
             executeMoves={executeMoves}
             resetCube={resetCube}

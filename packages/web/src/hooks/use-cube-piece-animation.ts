@@ -44,6 +44,7 @@ export function useCubePieceAnimation({
     targetAngle: 0,
     progress: 0,
   });
+  const [hasQueuedMoves, setHasQueuedMoves] = useState<boolean>(false);
 
   // Refs for managing animation state and queuing
   const moveQueueRef = useRef<MoveNotation[]>([]);
@@ -126,7 +127,8 @@ export function useCubePieceAnimation({
             const nextMove = moveQueueRef.current.shift()!;
             setTimeout(() => animateMove(nextMove), 100); // Small delay between moves for visual clarity
           } else {
-            // All moves completed - trigger sequence completion callback
+            // All moves completed - update queue state and trigger sequence completion callback
+            setHasQueuedMoves(false);
             onSequenceComplete?.();
           }
         }
@@ -154,6 +156,7 @@ export function useCubePieceAnimation({
       if (animationState.isAnimating) {
         // Animation in progress - add to queue
         moveQueueRef.current.push(moveNotation);
+        setHasQueuedMoves(true);
       } else {
         // No animation - start immediately
         animateMove(moveNotation);
@@ -174,6 +177,9 @@ export function useCubePieceAnimation({
       // Extract first move and queue the rest
       const [firstMove, ...remainingMoves] = moves;
       moveQueueRef.current.push(...remainingMoves);
+      if (remainingMoves.length > 0) {
+        setHasQueuedMoves(true);
+      }
       executeMove(firstMove);
     },
     [executeMove],
@@ -191,6 +197,7 @@ export function useCubePieceAnimation({
 
     // Clear the move queue and reset animation state
     moveQueueRef.current = [];
+    setHasQueuedMoves(false);
     setAnimationState({
       isAnimating: false,
       currentMove: null,
@@ -252,6 +259,9 @@ export function useCubePieceAnimation({
     setCubeVersion((prev) => prev + 1); // Increment version to force recreation
   }, [initialState]);
 
+  // Calculate if the cube is busy (animating OR has queued moves)
+  const isBusy = animationState.isAnimating || hasQueuedMoves;
+
   return {
     // Current cube state and manipulation functions
     cubeState,
@@ -267,5 +277,6 @@ export function useCubePieceAnimation({
     resetCube,
     applyCubeMoves,
     isAnimating: animationState.isAnimating,
+    isBusy, // New property that stays true throughout entire sequences
   };
 }
