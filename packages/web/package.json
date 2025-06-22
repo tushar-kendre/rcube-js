@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:gh-pages": "VITE_BASE_PATH=/rcube-js/ tsc -b && vite build",
+    "build:gh-pages": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest --config vitest.config.ts",

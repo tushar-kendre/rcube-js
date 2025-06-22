@@ -51,6 +51,15 @@ jobs:
 
       - name: Build web project
         run: yarn build:gh-pages
+        env:
+          VITE_BASE_PATH: /rcube-js/
+
+      - name: Verify build output
+        run: |
+          echo "Checking build output..."
+          ls -la packages/web/dist/
+          echo "Checking index.html content..."
+          head -20 packages/web/dist/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
