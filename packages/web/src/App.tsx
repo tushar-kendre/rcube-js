@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useMemo } from 'react'
+import { Suspense, lazy, useCallback, useMemo, useState } from 'react'
 import './App.css'
 import { Header } from './components/header'
 import { useCubePieceAnimation } from './hooks/use-cube-piece-animation'
@@ -32,7 +32,7 @@ const CubeControls = lazy(() =>
 )
 
 function App() {
-  const cubeSize = 3
+  const [cubeSize, setCubeSize] = useState(3)
   
   // Memoize initial state to prevent recreation
   const initialState = useMemo(() => createSolvedCube(cubeSize), [cubeSize])
@@ -63,6 +63,13 @@ function App() {
      const moves: MoveNotation[] = ['R', 'U', "R'", "U'"]
      executeMoves(moves)
    }, [executeMoves])
+
+   // Handle cube size change
+   const handleCubeSizeChange = useCallback((newSize: number) => {
+     setCubeSize(newSize)
+     // Don't call resetCube here - the cube will be recreated automatically
+     // when cubeSize changes due to the useMemo dependency
+   }, [])
 
    return (
     <>
@@ -119,6 +126,8 @@ function App() {
             resetCube={resetCube}
             stopAnimation={stopAnimation}
             testSequence={testMoves}
+            cubeSize={cubeSize}
+            onCubeSizeChange={handleCubeSizeChange}
           />
         </Suspense>
         

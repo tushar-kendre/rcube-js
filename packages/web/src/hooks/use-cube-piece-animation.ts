@@ -1,6 +1,6 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
-import { CubeState, MoveNotation, AnimationState } from '@/types/cube-pieces'
-import { parseMove, applyMove, applyMoves } from '@/lib/cube-piece-moves'
+import { applyMove, applyMoves, parseMove } from '@/lib/cube-piece-moves'
+import { AnimationState, CubeState, MoveNotation } from '@/types/cube-pieces'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 interface UseCubePieceAnimationProps {
   initialState: CubeState
@@ -82,7 +82,7 @@ export function useCubePieceAnimation({
         // Process next move in queue
         if (moveQueueRef.current.length > 0) {
           const nextMove = moveQueueRef.current.shift()!
-          setTimeout(() => animateMove(nextMove), 50) // Small delay between moves
+          animateMove(nextMove) // Immediately start next move for smooth animation
         } else {
           onSequenceComplete?.()
         }
@@ -94,26 +94,6 @@ export function useCubePieceAnimation({
   }, [animationState.isAnimating, animationDuration, onMoveComplete, onSequenceComplete])
 
   const executeMove = useCallback((moveNotation: MoveNotation) => {
-    // Handle double-turn notation (e.g. 'R2', '2R2', including layer prefixes)
-    const doubleRegex = /^(\d*)([RLUDFB])2('?)/i
-    const match = doubleRegex.exec(moveNotation)
-    if (match) {
-      const [, layer, face, prime] = match
-      // Quarter-turn notation
-      const quarter = `${layer}${face}${prime || ''}`
-      // If not currently animating, reset any pending moves
-      if (!animationState.isAnimating) {
-        moveQueueRef.current = []
-      }
-      // Enqueue exactly two quarter-turns
-      moveQueueRef.current.push(quarter, quarter)
-      // If starting fresh, kick off the first quarter move
-      if (!animationState.isAnimating) {
-        const next = moveQueueRef.current.shift()!
-        animateMove(next)
-      }
-      return
-    }
     if (animationState.isAnimating) {
       moveQueueRef.current.push(moveNotation)
     } else {
@@ -171,6 +151,12 @@ export function useCubePieceAnimation({
       }
     }
   }, [])
+
+  // Update cube state when initialState changes (e.g., cube size change)
+  useEffect(() => {
+    setCubeState(initialState)
+    setCubeVersion(prev => prev + 1) // Increment version to force recreation
+  }, [initialState])
 
   return {
     cubeState,
