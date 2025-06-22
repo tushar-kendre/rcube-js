@@ -11,6 +11,7 @@ createRoot(document.getElementById('root')!).render(
         v7_startTransition: true,
         v7_relativeSplatPath: true,
       }}
+      basename={import.meta.env.MODE === "development" ? "/" : "/rcube-js/"}
     >
       <Routes>
         <Route path="/" element={<App />} />

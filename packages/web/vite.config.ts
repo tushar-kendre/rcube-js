@@ -33,31 +33,9 @@ export default defineConfig({
     cssCodeSplit: true,
     // Target modern browsers for smaller bundles
     target: 'es2020',
-    // Ensure proper module handling
-    modulePreload: {
-      polyfill: false
-    },
     rollupOptions: {
-      // Ensure no external dependencies that could cause module splitting
-      external: [],
+      // No manual chunking - let Vite handle it automatically
       output: {
-        // Ultra-safe chunking strategy - keep React with everything that might use it
-        manualChunks: (id) => {
-          if (id.includes('node_modules')) {
-            // Three.js ecosystem - keep separate but ensure no React dependencies
-            if (id.includes('three') && !id.includes('@react-three') && !id.includes('react')) {
-              return 'three-core'
-            }
-            
-            // EVERYTHING else goes with React to prevent any cross-chunk React access
-            // This includes @react-three, @radix-ui, lucide-react, and all other UI libs
-            return 'react-vendor'
-          }
-        },
-        // Ensure consistent module format
-        format: 'es',
-        // Prevent hoisting that could cause issues
-        hoistTransitiveImports: false,
         // Optimize chunk names and hashing
         chunkFileNames: () => {
           return `assets/[name]-[hash].js`
@@ -87,30 +65,15 @@ export default defineConfig({
       transformMixedEsModules: true
     }
   },
-  // Optimize dev server and prevent module issues
+  // Optimize dev server
   optimizeDeps: {
     include: [
       'react',
       'react-dom',
       'react-dom/client',
-      'react/jsx-runtime',
-      'react/jsx-dev-runtime',
-      'scheduler',
-      'use-sync-external-store',
       'three',
       '@react-three/fiber',
-      '@react-three/drei',
-      '@radix-ui/react-slot',
-      '@radix-ui/react-dialog',
-      '@radix-ui/react-dropdown-menu',
-      'lucide-react'
-    ],
-    // Force all React-related modules to be pre-bundled together
-    force: true
-  },
-  // Additional configuration to prevent React splitting
-  define: {
-    // Ensure React is available globally to prevent undefined issues
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production')
+      '@react-three/drei'
+    ]
   }
 })
