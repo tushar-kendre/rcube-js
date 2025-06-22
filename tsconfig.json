@@ -2,11 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
@@ -15,12 +11,8 @@
     "moduleDetection": "force",
     "baseUrl": ".",
     "paths": {
-      "@rcube/*": [
-        "packages/*/src"
-      ],
-      "@/*": [
-        "packages/web/src/*"
-      ]
+      "@rcube/*": ["packages/*/src"],
+      "@/*": ["packages/web/src/*"]
     },
     "strict": true,
     "exactOptionalPropertyTypes": false,

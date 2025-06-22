@@ -1,35 +1,48 @@
-import { generateScramble } from '@/lib/cube-piece-moves'
-import { MoveNotation } from '@/types/cube-pieces'
-import { useEffect, useState } from 'react'
+import { generateScramble } from "@/lib/cube-piece-moves";
+import { MoveNotation } from "@/types/cube-pieces";
+import { useEffect, useState } from "react";
 
 /**
  * Props interface for the CubeControls component
  */
 interface CubeControlsProps {
   /** Whether cube is currently animating moves */
-  isAnimating: boolean
+  isAnimating: boolean;
   /** Function to execute a single move */
-  executeMove: (move: MoveNotation) => void
+  executeMove: (move: MoveNotation) => void;
   /** Function to execute a sequence of moves */
-  executeMoves: (moves: MoveNotation[]) => void
+  executeMoves: (moves: MoveNotation[]) => void;
   /** Function to reset cube to solved state */
-  resetCube: () => void
+  resetCube: () => void;
   /** Function to stop current animations */
-  stopAnimation: () => void
+  stopAnimation: () => void;
   /** Function to run test sequence */
-  testSequence: () => void
+  testSequence: () => void;
   /** Current cube size */
-  cubeSize: number
+  cubeSize: number;
   /** Callback when cube size changes */
-  onCubeSizeChange: (size: number) => void
+  onCubeSizeChange: (size: number) => void;
 }
 
 // Standard move notations for face rotations
-const moves: MoveNotation[] = ['R', "R'", 'L', "L'", 'U', "U'", 'D', "D'", 'F', "F'", 'B', "B'"]
+const moves: MoveNotation[] = [
+  "R",
+  "R'",
+  "L",
+  "L'",
+  "U",
+  "U'",
+  "D",
+  "D'",
+  "F",
+  "F'",
+  "B",
+  "B'",
+];
 
 /**
  * Control panel component for interacting with the Rubik's cube
- * 
+ *
  * Provides buttons for:
  * - Individual face moves
  * - Custom move sequences
@@ -37,7 +50,7 @@ const moves: MoveNotation[] = ['R', "R'", 'L', "L'", 'U', "U'", 'D', "D'", 'F', 
  * - Cube reset
  * - Animation control
  * - Cube size adjustment
- * 
+ *
  * @param props - Component props containing animation state and control functions
  * @returns JSX element with cube control interface
  */
@@ -49,59 +62,63 @@ export default function CubeControls({
   stopAnimation,
   testSequence,
   cubeSize,
-  onCubeSizeChange
+  onCubeSizeChange,
 }: CubeControlsProps) {
   // State for user input controls
-  const [customSeq, setCustomSeq] = useState<string>('')
-  const [scrambleLen, setScrambleLen] = useState<number>(20)
-  const [inputCubeSize, setInputCubeSize] = useState<string>(cubeSize.toString())
+  const [customSeq, setCustomSeq] = useState<string>("");
+  const [scrambleLen, setScrambleLen] = useState<number>(20);
+  const [inputCubeSize, setInputCubeSize] = useState<string>(
+    cubeSize.toString(),
+  );
 
   /**
    * Executes a custom move sequence entered by the user
    */
   const handleCustomExecute = () => {
     // Parse space-separated move sequence
-    const seq = customSeq.trim().split(/\s+/) as MoveNotation[]
-    console.log('Executing custom sequence:', seq)
+    const seq = customSeq.trim().split(/\s+/) as MoveNotation[];
+    console.log("Executing custom sequence:", seq);
     if (seq.length > 0) {
-      executeMoves(seq)
+      executeMoves(seq);
     }
-  }
+  };
 
   /**
    * Generates and executes a random scramble sequence
    */
   const handleScramble = () => {
-    const scramble = generateScramble(scrambleLen, cubeSize)
-    executeMoves(scramble)
-  }
+    const scramble = generateScramble(scrambleLen, cubeSize);
+    executeMoves(scramble);
+  };
 
   /**
    * Updates the cube size based on user input
    */
   const handleSetCubeSize = () => {
-    const size = parseInt(inputCubeSize)
+    const size = parseInt(inputCubeSize);
     if (!isNaN(size) && size >= 2) {
-      onCubeSizeChange(size)
+      onCubeSizeChange(size);
     }
-  }
+  };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSetCubeSize()
+    if (e.key === "Enter") {
+      handleSetCubeSize();
     }
-  }
+  };
 
   // Update input when cubeSize prop changes (e.g., from external reset)
   useEffect(() => {
-    setInputCubeSize(cubeSize.toString())
-  }, [cubeSize])
+    setInputCubeSize(cubeSize.toString());
+  }, [cubeSize]);
 
   return (
     <div className="w-80 p-4 bg-card rounded-lg">
       <h3 className="text-lg font-semibold mb-2">Cube Controls</h3>
       <div className="mb-4 p-2 bg-muted rounded-lg">
-        <label className="block text-sm text-muted-foreground mb-1">Cube Size (≥2)</label>
+        <label className="block text-sm text-muted-foreground mb-1">
+          Cube Size (≥2)
+        </label>
         <div className="flex gap-2">
           <input
             type="number"
@@ -115,7 +132,11 @@ export default function CubeControls({
           />
           <button
             onClick={handleSetCubeSize}
-            disabled={isAnimating || parseInt(inputCubeSize) < 2 || isNaN(parseInt(inputCubeSize))}
+            disabled={
+              isAnimating ||
+              parseInt(inputCubeSize) < 2 ||
+              isNaN(parseInt(inputCubeSize))
+            }
             className="px-3 py-1 bg-primary text-primary-foreground rounded disabled:opacity-50"
           >
             Set
@@ -126,7 +147,7 @@ export default function CubeControls({
         </div>
       </div>
       <div className="grid grid-cols-4 gap-2 mb-4">
-        {moves.map(m => (
+        {moves.map((m) => (
           <button
             key={m}
             onClick={() => executeMove(m)}
@@ -139,11 +160,13 @@ export default function CubeControls({
       </div>
 
       <div className="mb-4">
-        <label className="block text-sm mb-1">Custom Moves (separate each move with a space)</label>
+        <label className="block text-sm mb-1">
+          Custom Moves (separate each move with a space)
+        </label>
         <input
           type="text"
           value={customSeq}
-          onChange={e => setCustomSeq(e.target.value)}
+          onChange={(e) => setCustomSeq(e.target.value)}
           disabled={isAnimating}
           className="w-full px-2 py-1 border rounded mb-2"
           placeholder="Enter sequence"
@@ -163,7 +186,7 @@ export default function CubeControls({
           type="number"
           min={1}
           value={scrambleLen}
-          onChange={e => setScrambleLen(Number(e.target.value))}
+          onChange={(e) => setScrambleLen(Number(e.target.value))}
           disabled={isAnimating}
           className="w-full px-2 py-1 border rounded mb-2"
         />
@@ -200,5 +223,5 @@ export default function CubeControls({
         </button>
       </div>
     </div>
-  )
+  );
 }

@@ -34,7 +34,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Setup Yarn cache
         uses: actions/cache@v4
@@ -68,7 +68,7 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           # Upload the web build directory
-          path: './packages/web/dist'
+          path: "./packages/web/dist"
 
   # Deployment job
   deploy:

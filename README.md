@@ -25,17 +25,20 @@ A modern, interactive 3D Rubik's Cube web application built with React, Three.js
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/your-username/rcube-js.git
    cd rcube-js
    ```
 
 2. **Install dependencies**
+
    ```bash
    yarn install
    ```
 
 3. **Start the development server**
+
    ```bash
    yarn dev
    ```
@@ -114,10 +117,10 @@ yarn test:run
 
 The project is configured for automatic deployment to GitHub Pages via GitHub Actions. The deployment happens automatically when you push to the `main` branch.
 
-
 ## 🏗️ Tech Stack
 
 ### Frontend (`packages/web/`)
+
 - **React 18** - Modern React with hooks and concurrent features
 - **Three.js** - 3D graphics and WebGL rendering
 - **@react-three/fiber** - React renderer for Three.js
@@ -129,6 +132,7 @@ The project is configured for automatic deployment to GitHub Pages via GitHub Ac
 - **Lucide React** - Beautiful SVG icons
 
 ### Development Tools
+
 - **Vitest** - Fast unit testing framework
 - **ESLint** - Code linting and quality checks
 - **Prettier** - Code formatting
@@ -152,16 +156,19 @@ We welcome contributions! Please follow these guidelines:
 ### Development Workflow
 
 1. **Install dependencies**
+
    ```bash
    yarn install
    ```
 
 2. **Make your changes**
+
    - Follow the existing code style
    - Add tests for new functionality
    - Update documentation as needed
 
 3. **Run quality checks**
+
    ```bash
    yarn format    # Format code
    yarn lint      # Check linting
@@ -169,6 +176,7 @@ We welcome contributions! Please follow these guidelines:
    ```
 
 4. **Commit your changes**
+
    ```bash
    yarn commit    # Use conventional commits
    ```

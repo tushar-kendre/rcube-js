@@ -9,6 +9,7 @@
     "build": "yarn workspaces foreach --all run build",
     "build:gh-pages": "yarn workspace rcube-js-web run build:gh-pages",
     "dev": "yarn workspaces foreach --all run dev",
+    "lint": "yarn workspaces foreach --all run lint",
     "format": "prettier --write .",
     "prepare": "husky",
     "commit": "git-cz",
