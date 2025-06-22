@@ -1,12 +1,30 @@
-import { useRef, memo } from 'react'
+import { COLOR_MAP, CubePiece, Sticker } from '@/types/cube-pieces'
+import { memo, useRef } from 'react'
 import { Mesh } from 'three'
-import { CubePiece, Sticker, COLOR_MAP } from '@/types/cube-pieces'
 
+/**
+ * Props interface for the CubePieceComponent
+ */
 interface CubePieceComponentProps {
+  /** The cube piece data containing position and stickers */
   piece: CubePiece
+  /** Optional click handler for piece interaction */
   onClick?: (piece: CubePiece) => void
 }
 
+/**
+ * Individual cube piece component that renders a 3D piece with colored stickers
+ * 
+ * Handles:
+ * - 3D geometry positioning
+ * - Sticker placement and coloring
+ * - Click interaction
+ * - Performance optimization through memoization
+ * 
+ * @param piece - The cube piece data with position and sticker information
+ * @param onClick - Optional callback when the piece is clicked
+ * @returns JSX element representing the 3D cube piece
+ */
 export function CubePieceComponent({ piece, onClick }: CubePieceComponentProps) {
   const meshRef = useRef<Mesh>(null)
   const [x, y, z] = piece.position
@@ -15,11 +33,20 @@ export function CubePieceComponent({ piece, onClick }: CubePieceComponentProps) 
   const stickerHash = piece.stickers.map(s => `${s.face}:${s.color}`).join('-')
   const pieceStateKey = `${piece.id}-${piece.position.join(',')}-${stickerHash}`
 
+  /**
+   * Handles click events on the cube piece
+   */
   const handleClick = () => {
     onClick?.(piece)
   }
 
-  // Create sticker meshes for each visible face
+  /**
+   * Renders a single colored sticker on a face of the cube piece
+   * 
+   * @param sticker - Sticker data containing face and color information
+   * @param index - Index for React key prop
+   * @returns JSX element for the sticker or null if invalid
+   */
   const renderSticker = (sticker: Sticker, index: number) => {
     // Validate sticker data
     if (!sticker.face || !sticker.color) {
@@ -35,8 +62,9 @@ export function CubePieceComponent({ piece, onClick }: CubePieceComponentProps) 
     let stickerPosition: [number, number, number] = [0, 0, 0]
     let stickerRotation: [number, number, number] = [0, 0, 0]
     
-    const offset = 0.51
+    const offset = 0.51 // Small offset to prevent visual artifacts
     
+    // Calculate position and rotation based on which face the sticker is on
     switch (sticker.face) {
       case 'front':
         stickerPosition = [0, 0, offset]

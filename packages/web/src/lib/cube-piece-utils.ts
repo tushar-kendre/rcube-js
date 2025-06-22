@@ -1,34 +1,40 @@
-import { 
-  CubeState, 
-  CenterPiece, 
-  EdgePiece, 
-  CornerPiece, 
-  Position3D, 
-  Sticker, 
-  CubeFace, 
-  DEFAULT_CUBE_COLORS 
+import {
+  CenterPiece,
+  CornerPiece,
+  CubeFace,
+  CubeState,
+  DEFAULT_CUBE_COLORS,
+  EdgePiece,
+  Position3D,
+  Sticker
 } from '@/types/cube-pieces'
 
 /**
- * Creates a solved cube state with pieces in their correct positions
+ * Creates a solved cube state with pieces in their correct positions and colors
+ * 
+ * @param size - The dimension of the cube (default: 3 for a standard 3x3x3 cube)
+ * @returns A complete cube state with all pieces in solved configuration
  */
 export function createSolvedCube(size: number = 3): CubeState {
+  // Initialize arrays for different piece types
   const centers: CenterPiece[] = []
   const edges: EdgePiece[] = []
   const corners: CornerPiece[] = []
   
+  // Calculate the offset from center for positioning pieces
   const offset = (size - 1) / 2
   
-  // Generate all possible positions
+  // Generate all possible positions in the cube
   for (let x = 0; x < size; x++) {
     for (let y = 0; y < size; y++) {
       for (let z = 0; z < size; z++) {
         const position: Position3D = [x - offset, y - offset, z - offset]
         const [px, py, pz] = position
         
-        // Determine which faces this position touches
+        // Determine which faces this position touches based on its coordinates
         const stickers: Sticker[] = []
         
+        // Check each face boundary and assign appropriate sticker colors
         if (px === -offset) stickers.push({ face: 'left', color: DEFAULT_CUBE_COLORS.left })
         if (px === offset) stickers.push({ face: 'right', color: DEFAULT_CUBE_COLORS.right })
         if (py === -offset) stickers.push({ face: 'bottom', color: DEFAULT_CUBE_COLORS.bottom })
@@ -36,13 +42,15 @@ export function createSolvedCube(size: number = 3): CubeState {
         if (pz === -offset) stickers.push({ face: 'back', color: DEFAULT_CUBE_COLORS.back })
         if (pz === offset) stickers.push({ face: 'front', color: DEFAULT_CUBE_COLORS.front })
         
-        // Skip internal pieces (no stickers)
+        // Skip internal pieces (no visible stickers)
         if (stickers.length === 0) continue
         
+        // Generate unique piece identifier based on position
         const pieceId = `${x}-${y}-${z}`
         
-        // Create appropriate piece type based on number of stickers
+        // Create appropriate piece type based on number of visible faces
         if (stickers.length === 1) {
+          // Center piece - has one visible face
           centers.push({
             id: pieceId,
             type: 'center',
@@ -51,6 +59,7 @@ export function createSolvedCube(size: number = 3): CubeState {
             stickers: [stickers[0]]
           })
         } else if (stickers.length === 2) {
+          // Edge piece - has two visible faces
           edges.push({
             id: pieceId,
             type: 'edge',
@@ -59,6 +68,7 @@ export function createSolvedCube(size: number = 3): CubeState {
             stickers: [stickers[0], stickers[1]]
           })
         } else if (stickers.length === 3) {
+          // Corner piece - has three visible faces
           corners.push({
             id: pieceId,
             type: 'corner',
@@ -75,21 +85,25 @@ export function createSolvedCube(size: number = 3): CubeState {
 }
 
 /**
- * Scrambles the cube by moving pieces to random positions
- * (This is a simplified scramble - real scrambling should use valid moves)
+ * Scrambles the cube by randomly shuffling piece positions
+ * Note: This is a simplified scramble for demonstration - real scrambling should use valid move sequences
+ * 
+ * @param state - The current cube state to scramble
+ * @returns A new cube state with pieces in scrambled positions
  */
 export function scrambleCube(state: CubeState): CubeState {
   const { edges, corners } = state
   
-  // Scramble edges
+  // Scramble edge pieces using Fisher-Yates shuffle
   const scrambledEdges = [...edges]
   for (let i = scrambledEdges.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
+    // Swap positions of two edge pieces
     ;[scrambledEdges[i].position, scrambledEdges[j].position] = 
      [scrambledEdges[j].position, scrambledEdges[i].position]
   }
   
-  // Scramble corners  
+  // Scramble corner pieces using Fisher-Yates shuffle
   const scrambledCorners = [...corners]
   for (let i = scrambledCorners.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
@@ -105,12 +119,18 @@ export function scrambleCube(state: CubeState): CubeState {
 }
 
 /**
- * Checks if a piece is in a specific face layer
+ * Checks if a piece position is in a specific face layer
+ * 
+ * @param position - 3D position of the piece to check
+ * @param face - The face to check against
+ * @param size - Cube size for calculating layer boundaries
+ * @returns true if the piece is in the specified face layer
  */
 export function isPieceInFaceLayer(position: Position3D, face: CubeFace, size: number): boolean {
   const [x, y, z] = position
   const offset = (size - 1) / 2
   
+  // Check if position matches the face boundary coordinate
   switch (face) {
     case 'right': return Math.abs(x - offset) < 0.001
     case 'left': return Math.abs(x + offset) < 0.001
@@ -124,14 +144,25 @@ export function isPieceInFaceLayer(position: Position3D, face: CubeFace, size: n
 
 /**
  * Gets all pieces that are in a specific face layer
+ * 
+ * @param state - Current cube state
+ * @param face - The face layer to retrieve pieces from
+ * @returns Array of pieces in the specified face layer
  */
 export function getPiecesInFaceLayer(state: CubeState, face: CubeFace) {
+  // Combine all piece types into a single array
   const allPieces = [...state.centers, ...state.edges, ...state.corners]
   return allPieces.filter(piece => isPieceInFaceLayer(piece.position, face, state.size))
 }
 
 /**
- * Checks if a piece is in a specific layer for a given face
+ * Checks if a piece is in a specific layer depth for a given face
+ * 
+ * @param position - 3D position of the piece to check
+ * @param face - The face direction to check layers from
+ * @param size - Cube size for calculating layer boundaries
+ * @param layer - Layer depth (1 = face layer, 2 = next inner layer, etc.)
+ * @returns true if the piece is in the specified layer
  */
 export function isPieceInLayer(
   position: Position3D,

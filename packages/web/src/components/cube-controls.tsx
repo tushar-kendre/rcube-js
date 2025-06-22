@@ -2,19 +2,45 @@ import { generateScramble } from '@/lib/cube-piece-moves'
 import { MoveNotation } from '@/types/cube-pieces'
 import { useEffect, useState } from 'react'
 
+/**
+ * Props interface for the CubeControls component
+ */
 interface CubeControlsProps {
+  /** Whether cube is currently animating moves */
   isAnimating: boolean
+  /** Function to execute a single move */
   executeMove: (move: MoveNotation) => void
+  /** Function to execute a sequence of moves */
   executeMoves: (moves: MoveNotation[]) => void
+  /** Function to reset cube to solved state */
   resetCube: () => void
+  /** Function to stop current animations */
   stopAnimation: () => void
+  /** Function to run test sequence */
   testSequence: () => void
+  /** Current cube size */
   cubeSize: number
+  /** Callback when cube size changes */
   onCubeSizeChange: (size: number) => void
 }
 
+// Standard move notations for face rotations
 const moves: MoveNotation[] = ['R', "R'", 'L', "L'", 'U', "U'", 'D', "D'", 'F', "F'", 'B', "B'"]
 
+/**
+ * Control panel component for interacting with the Rubik's cube
+ * 
+ * Provides buttons for:
+ * - Individual face moves
+ * - Custom move sequences
+ * - Scrambling
+ * - Cube reset
+ * - Animation control
+ * - Cube size adjustment
+ * 
+ * @param props - Component props containing animation state and control functions
+ * @returns JSX element with cube control interface
+ */
 export default function CubeControls({
   isAnimating,
   executeMove,
@@ -25,11 +51,16 @@ export default function CubeControls({
   cubeSize,
   onCubeSizeChange
 }: CubeControlsProps) {
+  // State for user input controls
   const [customSeq, setCustomSeq] = useState<string>('')
   const [scrambleLen, setScrambleLen] = useState<number>(20)
   const [inputCubeSize, setInputCubeSize] = useState<string>(cubeSize.toString())
 
+  /**
+   * Executes a custom move sequence entered by the user
+   */
   const handleCustomExecute = () => {
+    // Parse space-separated move sequence
     const seq = customSeq.trim().split(/\s+/) as MoveNotation[]
     console.log('Executing custom sequence:', seq)
     if (seq.length > 0) {
@@ -37,11 +68,17 @@ export default function CubeControls({
     }
   }
 
+  /**
+   * Generates and executes a random scramble sequence
+   */
   const handleScramble = () => {
     const scramble = generateScramble(scrambleLen)
     executeMoves(scramble)
   }
 
+  /**
+   * Updates the cube size based on user input
+   */
   const handleSetCubeSize = () => {
     const size = parseInt(inputCubeSize)
     if (!isNaN(size) && size >= 2) {

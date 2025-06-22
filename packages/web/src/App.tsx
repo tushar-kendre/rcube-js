@@ -5,7 +5,7 @@ import { useCubePieceAnimation } from './hooks/use-cube-piece-animation'
 import { createSolvedCube } from './lib/cube-piece-utils'
 import { CubePiece, MoveNotation } from './types/cube-pieces'
 
-// Lazy load heavy components with more specific imports for better tree shaking
+// Lazy load heavy 3D components for better performance and code splitting
 const Canvas = lazy(() => 
   import('@react-three/fiber').then(module => ({ 
     default: module.Canvas 
@@ -24,19 +24,33 @@ const RubiksCube = lazy(() =>
   }))
 )
 
-// Lazy load CubeControls to reduce initial bundle
+// Lazy load control panel to reduce initial bundle size
 const CubeControls = lazy(() => 
   import('./components/cube-controls').then(module => ({ 
     default: module.default 
   }))
 )
 
+/**
+ * Main application component that orchestrates the 3D Rubik's cube interface
+ * 
+ * Features:
+ * - Interactive 3D cube visualization
+ * - Move animation system
+ * - Control panel for cube manipulation
+ * - Responsive design with mobile support
+ * - Performance optimization through lazy loading
+ * 
+ * @returns JSX element containing the complete cube application
+ */
 function App() {
+  // State for cube configuration
   const [cubeSize, setCubeSize] = useState(3)
   
-  // Memoize initial state to prevent recreation
+  // Memoize initial state to prevent unnecessary recreations
   const initialState = useMemo(() => createSolvedCube(cubeSize), [cubeSize])
   
+  // Cube animation and state management hook
   const {
     cubeState,
     cubeVersion,
@@ -53,23 +67,34 @@ function App() {
     onSequenceComplete: () => console.log('Sequence completed!')
   })
   
+  /**
+   * Handles cube piece click events for debugging and interaction
+   * 
+   * @param piece - The clicked cube piece
+   */
   const handlePieceClick = useCallback((piece: CubePiece) => {
     console.log(`Clicked ${piece.type} piece:`, piece)
     console.log('Piece stickers:', piece.stickers.map(s => `${s.face}: ${s.color}`))
   }, [])
 
-   // Test moves
-   const testMoves = useCallback(() => {
-     const moves: MoveNotation[] = ['R', 'U', "R'", "U'"]
-     executeMoves(moves)
-   }, [executeMoves])
+  /**
+   * Executes a test sequence of moves for demonstration
+   */
+  const testMoves = useCallback(() => {
+    const moves: MoveNotation[] = ['R', 'U', "R'", "U'"]
+    executeMoves(moves)
+  }, [executeMoves])
 
-   // Handle cube size change
-   const handleCubeSizeChange = useCallback((newSize: number) => {
-     setCubeSize(newSize)
-     // Don't call resetCube here - the cube will be recreated automatically
-     // when cubeSize changes due to the useMemo dependency
-   }, [])
+  /**
+   * Handles cube size changes and triggers recreation
+   * 
+   * @param newSize - The new cube dimension
+   */
+  const handleCubeSizeChange = useCallback((newSize: number) => {
+    setCubeSize(newSize)
+    // The cube will be recreated automatically when cubeSize changes
+    // due to the useMemo dependency on initialState
+  }, [])
 
    return (
     <>
