@@ -118,7 +118,7 @@ The project is configured for automatic deployment to GitHub Pages via GitHub Ac
 ## 🏗️ Tech Stack
 
 ### Frontend (`packages/web/`)
-- **React 19** - Modern React with hooks and concurrent features
+- **React 18** - Modern React with hooks and concurrent features
 - **Three.js** - 3D graphics and WebGL rendering
 - **@react-three/fiber** - React renderer for Three.js
 - **@react-three/drei** - Useful helpers for react-three-fiber

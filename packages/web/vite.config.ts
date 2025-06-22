@@ -22,6 +22,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "./src"),
+      // Ensure React modules resolve correctly
+      "react": "react",
+      "react-dom": "react-dom"
     },
   },
   build: {
@@ -66,12 +69,9 @@ export default defineConfig({
               return 'react-three-utils'
             }
             
-            // React ecosystem
-            if (id.includes('react/') || id.includes('react-dom/')) {
+            // React ecosystem - Keep all React modules together for compatibility
+            if (id.includes('react') || id.includes('scheduler')) {
               return 'react-core'
-            }
-            if (id.includes('scheduler')) {
-              return 'react-scheduler'
             }
             
             // UI Libraries - split by size
@@ -105,13 +105,17 @@ export default defineConfig({
               return 'math-physics'
             }
             
-            // Everything else - try to group by package size
+            // Everything else - be more conservative with grouping
             const packageName = id.split('node_modules/')[1]?.split('/')[0]
             if (packageName) {
-              // Group smaller packages together
-              const smallPackages = ['tiny-invariant', 'use-sync-external-store', 'detect-gpu']
-              if (smallPackages.some(pkg => packageName.includes(pkg))) {
-                return 'vendor-small'
+              // Don't group critical packages
+              if (['use-sync-external-store', 'tiny-invariant'].includes(packageName)) {
+                return `vendor-${packageName}`
+              }
+              // Group only truly small utility packages
+              const verySmallPackages = ['clsx', 'class-variance-authority', 'tailwind-merge']
+              if (verySmallPackages.includes(packageName)) {
+                return 'vendor-utils'
               }
             }
             
@@ -152,6 +156,7 @@ export default defineConfig({
     include: [
       'react',
       'react-dom',
+      'react-dom/client',
       'three',
       '@react-three/fiber',
       '@react-three/drei'
