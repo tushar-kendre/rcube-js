@@ -1,10 +1,1 @@
-# Ignore all files by default
 *
-
-# But keep our custom hooks
-!pre-commit
-!commit-msg
-!pre-push
-
-# And keep this gitignore file
-!.gitignore
