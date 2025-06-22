@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="100" viewBox="0 0 300 100" role="img"
+  aria-labelledby="title">
+  <title id="title">rcube-js logo</title>
+  <!-- Stylized isometric cube -->
+  <!-- Top face -->
+  <polygon points="30,10 60,25 30,40 0,25"
+    fill="#FFFFFF" stroke="#333" stroke-width="1" />
+  <!-- Left face -->
+  <polygon points="0,25 30,40 30,80 0,65"
+    fill="#D32F2F" stroke="#333" stroke-width="1" />
+  <!-- Right face -->
+  <polygon points="30,40 60,25 60,65 30,80"
+    fill="#1976D2" stroke="#333" stroke-width="1" />
+
+  <!-- Project name -->
+  <text x="80" y="65"
+    font-family="Segoe UI, Arial, sans-serif"
+    font-size="48"
+    font-weight="bold"
+    fill="#61DAFB"
+    letter-spacing="-1">
+    rcube-js
+  </text>
+</svg>

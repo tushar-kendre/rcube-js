@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" role="img"
+  aria-labelledby="title">
+  <title id="title">rcube-js favicon</title>
+  <!-- Top face -->
+  <polygon points="16,2 26,8 16,14 6,8"
+    fill="#FFFFFF" stroke="#333" stroke-width="1" />
+  <!-- Left face -->
+  <polygon points="6,8 16,14 16,26 6,20"
+    fill="#D32F2F" stroke="#333" stroke-width="1" />
+  <!-- Right face -->
+  <polygon points="16,14 26,8 26,20 16,26"
+    fill="#1976D2" stroke="#333" stroke-width="1" />
+</svg>

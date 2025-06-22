@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "arcanis.vscode-zipfs",
+    "esbenp.prettier-vscode",
+    "ms-vscode.vscode-typescript-next",
+    "bradlc.vscode-tailwindcss",
+    "ms-vscode.vscode-eslint",
+    "ms-vscode.vscode-json"
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "jsx": "react-jsx",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "baseUrl": ".",
+    "paths": {
+      "@rcube/*": [
+        "packages/*/src"
+      ],
+      "@/*": [
+        "packages/web/src/*"
+      ]
+    },
+    "strict": true,
+    "exactOptionalPropertyTypes": false,
+    "noUncheckedIndexedAccess": false,
+    "noImplicitOverride": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": false,
+    "incremental": true,
+    "composite": true
+  },
+  "references": [
+    {
+      "path": "./packages/web"
+    }
+  ],
+  "files": [],
+  "include": [],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "**/dist",
+    "**/build",
+    "**/*.test.*",
+    "**/*.spec.*"
+  ]
+}

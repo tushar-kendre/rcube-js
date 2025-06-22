@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+. "$(dirname "$0")/h"
+
+echo "[husky] 🔥 ------- RUNNING PRE_COMMIT PROCEDURE ------- 🔥"
+yarn lint-staged
+echo "[husky] 🔥 ------- PRE_COMMIT PROCEDURE COMPLETED ------- 🔥"

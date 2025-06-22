@@ -1,0 +1,52 @@
+{
+  "name": "rcube-js",
+  "version": "0.0.1",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "yarn workspaces foreach --all run build",
+    "dev": "yarn workspaces foreach --all run dev",
+    "format": "prettier --write .",
+    "prepare": "husky",
+    "commit": "git-cz",
+    "commitlint": "commitlint"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.3",
+    "@commitlint/cli": "^19.8.0",
+    "@commitlint/config-conventional": "^19.8.0",
+    "@types/node": "^24.0.3",
+    "babel-plugin-transform-remove-console": "^6.9.4",
+    "changeset": "^0.2.6",
+    "commitizen": "^4.3.1",
+    "concurrently": "^9.1.2",
+    "cz-conventional-changelog": "^3.3.0",
+    "gh-pages": "^4.0.0",
+    "git-cz": "^4.9.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.1",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3"
+  },
+  "packageManager": "yarn@4.9.1",
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.10",
+    "tailwindcss": "^4.1.10"
+  }
+}
