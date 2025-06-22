@@ -232,7 +232,7 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ## 🔗 Links
 
-- [Live Demo](https://your-username.github.io/rcube-js) (Coming Soon)
+- [Live Demo](https://tushar-kendre.github.io/rcube-js/)
 - [Report Bug](https://github.com/your-username/rcube-js/issues)
 - [Request Feature](https://github.com/your-username/rcube-js/issues)
 
