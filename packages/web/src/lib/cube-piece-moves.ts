@@ -9,7 +9,7 @@ import { getPiecesInFaceLayer, getPiecesInLayer, rotatePosition, rotateStickerFa
  * - Modifiers: ' (prime/counterclockwise), 2 (double turn)
  * - Layer notation: 2R, 3U, etc. (for larger cubes)
  * 
- * @param notation - Move notation string (e.g., "R", "U'", "F2", "2R")
+ * @param notation - Move notation string (e.g., "R", "U'", "F2", "2R", "3U'")
  * @returns Parsed Move object with face, layer, direction, and angle
  * @throws Error if notation is invalid
  */
@@ -159,26 +159,67 @@ export function applyMoves(state: CubeState, moves: MoveNotation[]): CubeState {
  * 
  * Creates a sequence of random valid moves while avoiding
  * consecutive moves on the same face to ensure good mixing.
+ * Includes inner layer moves for larger cubes.
  * 
  * @param length - Number of moves in the scramble (default: 20)
+ * @param cubeSize - Size of the cube (3 for 3x3x3, 4 for 4x4x4, etc.) (default: 3)
  * @returns Array of move notations representing the scramble
  */
-export function generateScramble(length: number = 20): MoveNotation[] {
-  const moves: MoveNotation[] = ['R', "R'", 'L', "L'", 'U', "U'", 'D', "D'", 'F', "F'", 'B', "B'"]
+export function generateScramble(length: number = 20, cubeSize: number = 3): MoveNotation[] {
+  const faces = ['R', 'L', 'U', 'D', 'F', 'B']
+  const modifiers = ['', "'", '2']
+  const moves: MoveNotation[] = []
+  
+  // Generate moves for all possible layers
+  faces.forEach(face => {
+    modifiers.forEach(modifier => {
+      // Outer face layer (e.g., R, R', R2)
+      moves.push(`${face}${modifier}`)
+      
+      // Inner layer moves for cubes larger than 3x3x3
+      if (cubeSize > 3) {
+        // For cubes larger than 3x3x3, generate inner layer moves
+        // Layer 2 to (cubeSize - 1) are the inner layers
+        for (let layer = 2; layer < cubeSize; layer++) {
+          moves.push(`${layer}${face}${modifier}`)
+        }
+      }
+    })
+  })
+  
   const scramble: MoveNotation[] = []
   
   for (let i = 0; i < length; i++) {
     let move: MoveNotation
+    let attempts = 0
+    const maxAttempts = 100 // Prevent infinite loop
+    
     do {
       // Select a random move from available moves
       move = moves[Math.floor(Math.random() * moves.length)]
+      attempts++
     } while (
-      // Avoid consecutive moves on the same face for better scrambling
+      attempts < maxAttempts &&
       scramble.length > 0 && 
-      move.charAt(0) === scramble[scramble.length - 1].charAt(0)
+      // Avoid consecutive moves on the same face/axis for better scrambling
+      // Extract the face character(s) from the move notation
+      getMoveFace(move) === getMoveFace(scramble[scramble.length - 1])
     )
     scramble.push(move)
   }
   
   return scramble
+}
+
+/**
+ * Helper function to extract the face character from a move notation
+ * Handles various move formats like "R", "2R", "3U'", etc.
+ * 
+ * @param moveNotation - The move notation string
+ * @returns The face character (R, L, U, D, F, B)
+ */
+function getMoveFace(moveNotation: string): string {
+  // Remove numbers, prime, and '2' to get the base face
+  const match = moveNotation.match(/([RLUDFB])/i)
+  return match ? match[1].toUpperCase() : ''
 }

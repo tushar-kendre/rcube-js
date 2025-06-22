@@ -72,7 +72,7 @@ export default function CubeControls({
    * Generates and executes a random scramble sequence
    */
   const handleScramble = () => {
-    const scramble = generateScramble(scrambleLen)
+    const scramble = generateScramble(scrambleLen, cubeSize)
     executeMoves(scramble)
   }
 
