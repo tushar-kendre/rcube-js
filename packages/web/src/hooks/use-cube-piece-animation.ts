@@ -82,7 +82,7 @@ export function useCubePieceAnimation({
         // Process next move in queue
         if (moveQueueRef.current.length > 0) {
           const nextMove = moveQueueRef.current.shift()!
-          animateMove(nextMove) // Immediately start next move for smooth animation
+          setTimeout(() => animateMove(nextMove), 100) // Small delay between moves
         } else {
           onSequenceComplete?.()
         }
