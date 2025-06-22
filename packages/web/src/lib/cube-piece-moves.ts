@@ -201,9 +201,12 @@ export function generateScramble(length: number = 20, cubeSize: number = 3): Mov
     } while (
       attempts < maxAttempts &&
       scramble.length > 0 && 
-      // Avoid consecutive moves on the same face/axis for better scrambling
-      // Extract the face character(s) from the move notation
-      getMoveFace(move) === getMoveFace(scramble[scramble.length - 1])
+      (
+        // Avoid consecutive moves on the same face/axis for better scrambling
+        getMoveFace(move) === getMoveFace(scramble[scramble.length - 1]) ||
+        // Avoid moves that cancel out the previous move
+        movesCancel(move, scramble[scramble.length - 1])
+      )
     )
     scramble.push(move)
   }
@@ -222,4 +225,58 @@ function getMoveFace(moveNotation: string): string {
   // Remove numbers, prime, and '2' to get the base face
   const match = moveNotation.match(/([RLUDFB])/i)
   return match ? match[1].toUpperCase() : ''
+}
+
+/**
+ * Checks if two moves cancel each other out
+ * 
+ * Two moves cancel if they:
+ * 1. Are on the same face and layer
+ * 2. Have opposite effects (R cancels R', R2 cancels R2)
+ * 
+ * @param move1 - First move notation
+ * @param move2 - Second move notation
+ * @returns True if the moves cancel each other out
+ */
+function movesCancel(move1: string, move2: string): boolean {
+  // Extract components from both moves
+  const parseComponents = (move: string) => {
+    const match = move.match(/^(\d*)([RLUDFB])(2)?(')?$/i)
+    if (!match) return null
+    
+    const [, layer = '1', face, double, prime] = match
+    return {
+      layer: parseInt(layer),
+      face: face.toUpperCase(),
+      isDouble: Boolean(double),
+      isPrime: Boolean(prime)
+    }
+  }
+  
+  const comp1 = parseComponents(move1)
+  const comp2 = parseComponents(move2)
+  
+  if (!comp1 || !comp2) return false
+  
+  // Must be same face and layer to potentially cancel
+  if (comp1.face !== comp2.face || comp1.layer !== comp2.layer) {
+    return false
+  }
+  
+  // Check for cancellation patterns:
+  // 1. R cancels R' (and vice versa)
+  // 2. R2 cancels R2
+  // 3. Three of the same move cancels one opposite (R R R cancels R')
+  
+  // Double moves (R2) cancel with other double moves on same face/layer
+  if (comp1.isDouble && comp2.isDouble) {
+    return true
+  }
+  
+  // Regular move cancels with its prime counterpart
+  if (!comp1.isDouble && !comp2.isDouble && comp1.isPrime !== comp2.isPrime) {
+    return true
+  }
+  
+  return false
 }
