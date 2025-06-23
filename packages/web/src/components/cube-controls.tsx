@@ -27,20 +27,40 @@ interface CubeControlsProps {
 }
 
 // Standard move notations for face rotations
-const moves: MoveNotation[] = [
-  "R",
-  "R'",
-  "L",
-  "L'",
-  "U",
-  "U'",
-  "D",
-  "D'",
-  "F",
-  "F'",
-  "B",
-  "B'",
-];
+const baseFaces = ["R", "L", "U", "D", "F", "B"];
+
+/**
+ * Generates appropriate moves for the given cube size
+ * Avoids redundant moves like 3R and 2L' on a 4x4x4 cube
+ */
+const generateMovesForCubeSize = (cubeSize: number): MoveNotation[] => {
+  const moves: MoveNotation[] = [];
+  
+  // Always include outer face moves
+  baseFaces.forEach(face => {
+    moves.push(face, `${face}'`);
+  });
+  
+  // For cubes larger than 3x3x3, add inner layer moves
+  if (cubeSize > 3) {
+    // Calculate maximum inner layer to avoid redundant moves
+    // For 4x4x4: 4 - floor(4/2) = 2 → layer 2
+    // For 5x5x5: 5 - floor(5/2) = 3 → layers 2,3  
+    // For 6x6x6: 6 - floor(6/2) = 3 → layers 2,3
+    // For 7x7x7: 7 - floor(7/2) = 4 → layers 2,3,4
+    const maxInnerLayer = cubeSize - Math.floor(cubeSize / 2);
+    
+    for (let layer = 2; layer <= maxInnerLayer; layer++) {
+      // Add inner layer moves for all faces
+      // All these moves are valid and distinct for each layer
+      baseFaces.forEach(face => {
+        moves.push(`${layer}${face}`, `${layer}${face}'`);
+      });
+    }
+  }
+  
+  return moves;
+};
 
 /**
  * Control panel component for interacting with the Rubik's cube
@@ -115,6 +135,9 @@ export default function CubeControls({
     setInputCubeSize(cubeSize.toString());
   }, [cubeSize]);
 
+  // Generate moves based on current cube size
+  const moves = generateMovesForCubeSize(cubeSize);
+
   return (
     <div className="w-80 p-4 bg-card rounded-lg">
       <h3 className="text-lg font-semibold mb-2">Cube Controls</h3>
@@ -149,13 +172,17 @@ export default function CubeControls({
           Current: {cubeSize}×{cubeSize}×{cubeSize}
         </div>
       </div>
-      <div className="grid grid-cols-4 gap-2 mb-4">
+      <div className={`grid gap-2 mb-4 ${
+        moves.length > 18 ? 'grid-cols-8' : 
+        moves.length > 12 ? 'grid-cols-6' : 
+        'grid-cols-4'
+      }`}>
         {moves.map((m) => (
           <button
             key={m}
             onClick={() => executeMove(m)}
             disabled={isAnimating}
-            className="w-full py-2 bg-primary text-primary-foreground rounded disabled:opacity-50"
+            className="w-full py-2 bg-primary text-primary-foreground rounded disabled:opacity-50 text-xs"
           >
             {m}
           </button>
