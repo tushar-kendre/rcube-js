@@ -1,9 +1,10 @@
 import { Suspense, lazy, useCallback, useMemo, useState } from "react";
 import "./App.css";
+import { CameraTracker, FaceOrientationHUD } from "./components/face-orientation-hud";
 import { Header } from "./components/header";
 import { useCubePieceAnimation } from "./hooks/use-cube-piece-animation";
 import { createSolvedCube } from "./lib/cube-piece-utils";
-import { CubePiece, MoveNotation } from "./types/cube-pieces";
+import { CubeFace, CubePiece, MoveNotation } from "./types/cube-pieces";
 
 // Lazy load heavy 3D components for better performance and code splitting
 const Canvas = lazy(() =>
@@ -46,6 +47,14 @@ const CubeControls = lazy(() =>
 function App() {
   // State for cube configuration
   const [cubeSize, setCubeSize] = useState(3);
+    // State for face orientation HUD
+  const [visibleFaces, setVisibleFaces] = useState<Array<{
+    face: CubeFace;
+    label: string;
+    color: string;
+    position: "center" | "top" | "bottom" | "left" | "right";
+    opacity: number;
+  }>>([]);
 
   // Memoize initial state to prevent unnecessary recreations
   const initialState = useMemo(() => createSolvedCube(cubeSize), [cubeSize]);
@@ -103,8 +112,10 @@ function App() {
   return (
     <>
       <Header />
-      <div className="flex h-[calc(100vh-60px)] gap-4 p-4">
-        <div className="flex-1 relative">
+      <div className="flex h-[calc(100vh-60px)] gap-4 p-4">        <div className="flex-1 relative">
+          {/* Face Orientation HUD */}
+          <FaceOrientationHUD isAnimating={isAnimating} visibleFaces={visibleFaces} />
+          
           <Suspense
             fallback={
               <div className="flex items-center justify-center h-full bg-gradient-to-br from-background to-muted rounded-lg">
@@ -114,11 +125,11 @@ function App() {
                 </div>
               </div>
             }
-          >
-            <Canvas
+          >            <Canvas
               camera={{ position: [8, 8, 8], fov: 50 }}
               className="bg-gradient-to-br from-background to-muted"
             >
+              <CameraTracker onVisibleFacesUpdate={setVisibleFaces} />
               <RubiksCube
                 key={`cube-${cubeVersion}`}
                 state={cubeState}
