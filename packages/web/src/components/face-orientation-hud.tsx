@@ -25,7 +25,7 @@ interface CameraTrackerProps {
  * Props for the HUD display component (outside Canvas)
  */
 interface FaceOrientationHUDProps {
-  /** Whether the cube is currently animating */
+  /** Whether the cube is currently busy (animating or executing sequences) */
   isAnimating?: boolean;
   /** List of currently visible faces */
   visibleFaces: VisibleFace[];
@@ -148,7 +148,7 @@ export function CameraTracker({ onVisibleFacesUpdate }: CameraTrackerProps) {
  * Must be placed outside the Canvas component
  */
 export function FaceOrientationHUD({ isAnimating = false, visibleFaces }: FaceOrientationHUDProps) {
-  // Don't show HUD during animations to avoid distraction
+  // Don't show HUD during sequence execution to avoid distraction
   if (isAnimating) {
     return null;
   }

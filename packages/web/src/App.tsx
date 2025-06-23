@@ -114,7 +114,7 @@ function App() {
       <Header />
       <div className="flex h-[calc(100vh-60px)] gap-4 p-4">        <div className="flex-1 relative">
           {/* Face Orientation HUD */}
-          <FaceOrientationHUD isAnimating={isAnimating} visibleFaces={visibleFaces} />
+          <FaceOrientationHUD isAnimating={isBusy} visibleFaces={visibleFaces} />
           
           <Suspense
             fallback={
