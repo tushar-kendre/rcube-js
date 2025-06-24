@@ -4,7 +4,7 @@ import { resolve } from "path";
 import { defineConfig } from "vite";
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({mode})=>({
   // Set base path for GitHub Pages deployment
   base: process.env.VITE_BASE_PATH || "/",
   plugins: [
@@ -13,13 +13,13 @@ export default defineConfig({
       jsxRuntime: "automatic",
       // Enable React optimization
       babel: {
-        plugins: [
+        plugins: mode!=='development'? [
           // Remove development-only code in production
           [
             "babel-plugin-transform-remove-console",
             { exclude: ["error", "warn"] },
           ],
-        ],
+        ]:[],
       },
     }),
     tailwindcss(),
@@ -79,4 +79,4 @@ export default defineConfig({
       "@react-three/drei",
     ],
   },
-});
+}));

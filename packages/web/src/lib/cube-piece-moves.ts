@@ -73,7 +73,7 @@ export function parseMove(notation: MoveNotation): Move {
   let clockwise = !prime;
 
   // Apply special semantics for top and bottom faces (inverted rotation direction)
-  if (face === "top" || face === "bottom") {
+  if (face === "top" || face === "bottom" || face === "right" || face === "left") {
     clockwise = !clockwise;
   }
 
@@ -121,11 +121,13 @@ export function applyMove(state: CubeState, move: Move): CubeState {
     centers: state.centers.map((piece) => ({
       ...piece,
       position: [...piece.position],
+      originalPosition: [...piece.originalPosition],
       stickers: piece.stickers.map((sticker) => ({ ...sticker })) as [Sticker],
     })),
     edges: state.edges.map((piece) => ({
       ...piece,
       position: [...piece.position],
+      originalPosition: [...piece.originalPosition],
       stickers: piece.stickers.map((sticker) => ({ ...sticker })) as [
         Sticker,
         Sticker,
@@ -134,6 +136,7 @@ export function applyMove(state: CubeState, move: Move): CubeState {
     corners: state.corners.map((piece) => ({
       ...piece,
       position: [...piece.position],
+      originalPosition: [...piece.originalPosition],
       stickers: piece.stickers.map((sticker) => ({ ...sticker })) as [
         Sticker,
         Sticker,

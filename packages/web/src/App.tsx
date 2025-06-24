@@ -74,7 +74,7 @@ function App() {
     initialState,
     animationDuration: 600,
     onMoveComplete: (move) => console.log(`Completed move: ${move}`),
-    onSequenceComplete: () => console.log("Sequence completed!"),
+    onSequenceComplete: () => {console.log("Sequence completed!"); console.log("Current cube state:", cubeState);},
   });
 
   /**
