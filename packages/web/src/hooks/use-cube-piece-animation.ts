@@ -13,7 +13,7 @@ interface UseCubePieceAnimationProps {
   /** Callback triggered when a single move completes */
   onMoveComplete?: (move: MoveNotation) => void;
   /** Callback triggered when a complete move sequence finishes */
-  onSequenceComplete?: () => void;
+  onSequenceComplete?: (updatedState: CubeState) => void;
 }
 
 /**
@@ -105,7 +105,11 @@ export function useCubePieceAnimation({
           animationFrameRef.current = requestAnimationFrame(animate);
         } else {
           // Animation complete - apply the move to the logical cube state
-          setCubeState((prevState) => applyMove(prevState, parsedMove));
+          let newState: CubeState;
+          setCubeState((prevState) => {
+            newState = applyMove(prevState, parsedMove);
+            return newState;
+          });
 
           // Force cube component recreation by incrementing version
           setCubeVersion((prev) => prev + 1);
@@ -129,7 +133,8 @@ export function useCubePieceAnimation({
           } else {
             // All moves completed - update queue state and trigger sequence completion callback
             setHasQueuedMoves(false);
-            onSequenceComplete?.();
+            // Pass the updated state to the callback
+            setTimeout(() => onSequenceComplete?.(newState!), 0);
           }
         }
       };

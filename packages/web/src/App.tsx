@@ -3,7 +3,7 @@ import "./App.css";
 import { CameraTracker, FaceOrientationHUD } from "./components/face-orientation-hud";
 import { Header } from "./components/header";
 import { useCubePieceAnimation } from "./hooks/use-cube-piece-animation";
-import { createSolvedCube } from "./lib/cube-piece-utils";
+import { createSolvedCube, cubeStateToFaceMatrices } from "./lib/cube-piece-utils";
 import { CubeFace, CubePiece, MoveNotation } from "./types/cube-pieces";
 
 // Lazy load heavy 3D components for better performance and code splitting
@@ -74,7 +74,14 @@ function App() {
     initialState,
     animationDuration: 600,
     onMoveComplete: (move) => console.log(`Completed move: ${move}`),
-    onSequenceComplete: () => {console.log("Sequence completed!"); console.log("Current cube state:", cubeState);},
+    onSequenceComplete: (updatedState) => {
+      console.log("Sequence completed!");
+      console.log("Current cube state:", updatedState);
+      
+      // Convert cube state to face matrices for solver algorithms
+      const faceMatrices = cubeStateToFaceMatrices(updatedState);
+      console.log("Face matrices for solvers:", faceMatrices);
+    },
   });
 
   /**
