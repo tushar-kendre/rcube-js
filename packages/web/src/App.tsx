@@ -2,9 +2,11 @@ import { Suspense, lazy, useCallback, useMemo, useState } from "react";
 import "./App.css";
 import { CameraTracker, FaceOrientationHUD } from "./components/face-orientation-hud";
 import { Header } from "./components/header";
-import { useCubePieceAnimation } from "./hooks/use-cube-piece-animation";
-import { createSolvedCube, cubeStateToFaceMatrices } from "./lib/cube-piece-utils";
-import { CubeFace, CubePiece, MoveNotation } from "./types/cube-pieces";
+import { useCubieAnimation } from "./hooks/use-cubie-animation";
+import { createSolvedCubieState } from "./lib/cubie-utils";
+import { WhiteCrossSolver } from "./lib/white-cross-solver";
+import { CubeFace, MoveNotation } from "./types/cube-core";
+import { Cubie, CubieMoveNotation } from "./types/cubie";
 
 // Lazy load heavy 3D components for better performance and code splitting
 const Canvas = lazy(() =>
@@ -19,9 +21,9 @@ const OrbitControls = lazy(() =>
   })),
 );
 
-const RubiksCube = lazy(() =>
-  import("./components/cube/rubiks-cube").then((module) => ({
-    default: module.RubiksCube,
+const CubieRubiksCube = lazy(() =>
+  import("./components/cube/cubie-rubiks-cube").then((module) => ({
+    default: module.CubieRubiksCube,
   })),
 );
 
@@ -34,6 +36,7 @@ const CubeControls = lazy(() =>
 
 /**
  * Main application component that orchestrates the 3D Rubik's cube interface
+ * Now using the new cubie-based data structure for better algorithm compatibility
  *
  * Features:
  * - Interactive 3D cube visualization
@@ -41,13 +44,14 @@ const CubeControls = lazy(() =>
  * - Control panel for cube manipulation
  * - Responsive design with mobile support
  * - Performance optimization through lazy loading
+ * - Scales to any N×N×N cube size
  *
  * @returns JSX element containing the complete cube application
  */
 function App() {
   // State for cube configuration
   const [cubeSize, setCubeSize] = useState(3);
-    // State for face orientation HUD
+  // State for face orientation HUD
   const [visibleFaces, setVisibleFaces] = useState<Array<{
     face: CubeFace;
     label: string;
@@ -57,7 +61,9 @@ function App() {
   }>>([]);
 
   // Memoize initial state to prevent unnecessary recreations
-  const initialState = useMemo(() => createSolvedCube(cubeSize), [cubeSize]);
+  const initialState = useMemo(() => {
+    return createSolvedCubieState(cubeSize);
+  }, [cubeSize]);
 
   // Cube animation and state management hook
   const {
@@ -70,40 +76,61 @@ function App() {
     resetCube,
     isAnimating,
     isBusy, // New property that stays true throughout entire sequences
-  } = useCubePieceAnimation({
+  } = useCubieAnimation({
     initialState,
-    animationDuration: 600,
-    onMoveComplete: (move) => console.log(`Completed move: ${move}`),
+    animationDuration: 600, // 600ms animation duration for smoother moves
     onSequenceComplete: (updatedState) => {
-      console.log("Sequence completed!");
-      console.log("Current cube state:", updatedState);
+      console.log("=== SEQUENCE COMPLETED ===");
+      console.log("Final cube state:", updatedState);
       
-      // Convert cube state to face matrices for solver algorithms
-      const faceMatrices = cubeStateToFaceMatrices(updatedState);
-      console.log("Face matrices for solvers:", faceMatrices);
+      // If this was a white cross solve, validate the result
+      if (cubeSize === 3) {
+        const solver = new WhiteCrossSolver(updatedState);
+        const isValid = solver.validateSolution(updatedState);
+        console.log("White cross validation:", isValid ? "PASSED" : "FAILED");
+      }
+      
+      console.log("========================");
     },
   });
 
   /**
-   * Handles cube piece click events for debugging and interaction
+   * Handles cubie click events for debugging and interaction
    *
-   * @param piece - The clicked cube piece
+   * @param cubie - The clicked cubie
    */
-  const handlePieceClick = useCallback((piece: CubePiece) => {
-    console.log(`Clicked ${piece.type} piece:`, piece);
-    console.log(
-      "Piece stickers:",
-      piece.stickers.map((s) => `${s.face}: ${s.color}`),
-    );
+  const handleCubieClick = useCallback((cubie: Cubie) => {
+    console.log(`Clicked ${cubie.type} cubie:`, cubie);
   }, []);
+
+  /**
+   * Execute move function
+   */
+  const executeWithLogging = useCallback((move: CubieMoveNotation | MoveNotation) => {
+    executeMove(move);
+  }, [executeMove]);
+
+  /**
+   * Execute moves function
+   */
+  const executeMovesWithLogging = useCallback((moves: (MoveNotation | CubieMoveNotation)[]) => {
+    executeMoves(moves);
+  }, [executeMoves]);
 
   /**
    * Executes a test sequence of moves for demonstration
    */
   const testMoves = useCallback(() => {
-    const moves: MoveNotation[] = ["R", "U", "R'", "U'"];
-    executeMoves(moves);
-  }, [executeMoves]);
+    const moves: (MoveNotation | CubieMoveNotation)[] = ["R", "U", "R'", "U'"];
+    executeMovesWithLogging(moves);
+  }, [executeMovesWithLogging]);
+
+  /**
+   * Reset cube function
+   */
+  const resetCubeWithLogging = useCallback(() => {
+    resetCube();
+  }, [resetCube]);
 
   /**
    * Handles cube size changes and triggers recreation
@@ -112,9 +139,37 @@ function App() {
    */
   const handleCubeSizeChange = useCallback((newSize: number) => {
     setCubeSize(newSize);
-    // The cube will be recreated automatically when cubeSize changes
-    // due to the useMemo dependency on initialState
   }, []);
+
+  /**
+   * Tests the white cross solver on the current cube state
+   */
+  const solveWhiteCross = useCallback(() => {
+    if (cubeSize !== 3) {
+      console.error("White cross solver only works on 3x3 cubes");
+      return;
+    }
+
+    try {
+      console.log("=== STARTING WHITE CROSS SOLVER ===");
+      const solver = new WhiteCrossSolver(cubeState);
+      const solutionMoves = solver.solve();
+      
+      if (solutionMoves.length > 0) {
+        console.log("Solution found! Executing moves:", solutionMoves.join(" "));
+        executeMovesWithLogging(solutionMoves);
+      } else {
+        console.log("White cross is already solved!");
+      }
+      
+      // Validate solution on the final animated state, not the solver state
+      // We'll validate after the animation completes
+      console.log("White cross solver completed. Validation will occur after animation.");
+      
+    } catch (error) {
+      console.error("Error solving white cross:", error);
+    }
+  }, [cubeState, cubeSize, executeMovesWithLogging]);
 
   return (
     <>
@@ -137,11 +192,11 @@ function App() {
               className="bg-gradient-to-br from-background to-muted"
             >
               <CameraTracker onVisibleFacesUpdate={setVisibleFaces} />
-              <RubiksCube
+              <CubieRubiksCube
                 key={`cube-${cubeVersion}`}
                 state={cubeState}
-                onPieceClick={handlePieceClick}
                 animationState={animationState}
+                onCubieClick={handleCubieClick}
                 cubeVersion={cubeVersion}
               />
               <OrbitControls
@@ -173,11 +228,12 @@ function App() {
           <CubeControls
             isAnimating={isBusy} // Use isBusy to keep controls disabled throughout sequences
             canStopAnimation={isBusy} // Can stop when busy (animating or has queued moves)
-            executeMove={executeMove}
-            executeMoves={executeMoves}
-            resetCube={resetCube}
+            executeMove={executeWithLogging}
+            executeMoves={executeMovesWithLogging}
+            resetCube={resetCubeWithLogging}
             stopAnimation={stopAnimation}
             testSequence={testMoves}
+            solveWhiteCross={solveWhiteCross}
             cubeSize={cubeSize}
             onCubeSizeChange={handleCubeSizeChange}
           />

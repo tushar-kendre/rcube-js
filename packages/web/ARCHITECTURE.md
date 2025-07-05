@@ -2,16 +2,17 @@
 
 ## Overview
 
-The RCube web project is a sophisticated 3D Rubik's cube simulator built with React, TypeScript, and Three.js. It provides an interactive 3D visualization of a Rubik's cube with smooth animations, move execution, and comprehensive state management.
+The RCube web project is a sophisticated 3D Rubik's cube simulator built with React, TypeScript, and Three.js. It features a universal cubie-based data structure that supports any N×N×N cube size, with smooth animations, optimal move execution, and a graph-based white cross solver.
 
 ## Table of Contents
 
 1. [Three.js Setup & Architecture](#threejs-setup--architecture)
-2. [Cube and Cube Pieces Implementation](#cube-and-cube-pieces-implementation)
+2. [Cubie-Based Implementation](#cubie-based-implementation)
 3. [Moves Implementation](#moves-implementation)
 4. [Animation System](#animation-system)
-5. [Performance Optimizations](#performance-optimizations)
-6. [Runtime Complexity Analysis](#runtime-complexity-analysis)
+5. [White Cross Solver](#white-cross-solver)
+6. [Performance Optimizations](#performance-optimizations)
+7. [Runtime Complexity Analysis](#runtime-complexity-analysis)
 
 ---
 
@@ -35,7 +36,7 @@ The 3D scene is initialized in `App.tsx` using React Three Fiber, which provides
 
 ### Lighting System
 
-The cube uses a dual-lighting setup in `rubiks-cube.tsx`:
+The cube uses a dual-lighting setup in `cubie-rubiks-cube.tsx`:
 
 ```tsx
 <ambientLight intensity={0.8} />
@@ -66,11 +67,11 @@ The orbit controls provide intuitive camera manipulation:
 
 ---
 
-## Cube and Cube Pieces Implementation
+## Cubie-Based Implementation
 
-### Type System Architecture
+### Universal Data Structure
 
-The cube implementation uses a strict TypeScript type system for safety and clarity:
+The cube implementation uses a universal cubie-based data structure that supports any N×N×N cube:
 
 #### Core Types
 
@@ -81,22 +82,77 @@ export type Position3D = [number, number, number];
 // Cube face identifiers
 export type CubeFace = "front" | "back" | "left" | "right" | "top" | "bottom";
 
-// Piece categorization by visible faces
-export type PieceType = "center" | "edge" | "corner";
+// Cubie types based on position in cube
+export type CubieType = "center" | "edge" | "corner";
+
+// Move notation for cubie operations
+export type CubieMoveNotation = 'R' | "R'" | 'U' | "U'" | 'L' | "L'" | 'F' | "F'" | 'B' | "B'" | 'D' | "D'";
 ```
 
-#### Piece Interface Hierarchy
+#### Cubie Interface
 
 ```typescript
-interface CubePiece {
-  id: string;                    // Unique identifier
-  type: PieceType;              // Determines number of stickers
-  position: Position3D;         // Current 3D position
-  stickers: Sticker[];          // Colored faces
-  originalPosition: Position3D; // Reference for solved state
+interface Cubie {
+  id: string;                           // Unique identifier
+  type: CubieType;                     // Determines cubie category
+  renderPosition: Position3D;          // Current position for rendering
+  originalRenderPosition: Position3D;  // Original solved position
+  colors: Record<CubeFace, CubeColor>; // Colors on each face
 }
+```
 
-// Specialized interfaces with strict sticker counts
+#### Cubie State Management
+
+```typescript
+interface CubieState {
+  size: number;                                    // N for N×N×N cube
+  cubies: Cubie[];                                // All cubies in the cube
+  positionMap: Map<string, Cubie>;                // Fast position-based lookup
+}
+```
+
+### Key Features
+
+**Universal Design**: 
+- Supports any N×N×N cube size (3×3×3, 4×4×4, 5×5×5, etc.)
+- Dynamic position mapping for efficient lookups
+- Proper orientation tracking for each cubie
+
+**Position Management**:
+- `renderPosition`: Current position for 3D rendering
+- `originalRenderPosition`: Reference position for solved state
+- Automatic position map rebuilding after moves
+
+**Color System**:
+- Each cubie tracks colors on all 6 faces
+- Only visible faces are rendered with actual colors
+- Hidden faces use transparent colors
+
+### Cubie Creation Algorithm
+
+```typescript
+function createSolvedCubieState(size: number): CubieState {
+  const cubies: Cubie[] = [];
+  
+  for (let x = 0; x < size; x++) {
+    for (let y = 0; y < size; y++) {
+      for (let z = 0; z < size; z++) {
+        // Determine cubie type based on position
+        const type = determineCubieType(x, y, z, size);
+        
+        // Skip internal cubies (not visible)
+        if (type === null) continue;
+        
+        // Create cubie with solved colors
+        const cubie = createCubie(x, y, z, size, type);
+        cubies.push(cubie);
+      }
+    }
+  }
+  
+  return { size, cubies, positionMap: buildPositionMap(cubies) };
+}
+```
 interface CenterPiece extends CubePiece {
   type: "center";
   stickers: [Sticker];          // Exactly 1 sticker
@@ -486,6 +542,89 @@ const executeMoves = useCallback((moves: MoveNotation[]) => {
 - Automatic queuing during active animations
 - Sequential processing with 100ms inter-move delay for clarity
 - Queue clearing on stop/reset operations
+
+---
+
+## White Cross Solver
+
+### Graph-Based BFS Algorithm
+
+The white cross solver implements a sophisticated graph search algorithm:
+
+```typescript
+class WhiteCrossSolver {
+  private visitedStates = new Map<string, CubieMoveNotation[]>();
+  private fundamentalMoves: CubieMoveNotation[] = [
+    'R', "R'", 'U', "U'", 'L', "L'", 'F', "F'", 'B', "B'", 'D', "D'"
+  ];
+  
+  solve(): CubieMoveNotation[] {
+    // BFS implementation with state hashing
+    const queue: GraphNode[] = [{ stateHash: startHash, moves: [], depth: 0 }];
+    
+    while (queue.length > 0) {
+      const currentNode = queue.shift()!;
+      
+      // Explore all valid moves from current state
+      for (const move of this.getValidMoves(currentNode.moves)) {
+        const newState = executeSolverMove(currentState, move);
+        const newHash = this.hashWhiteCrossState(newState);
+        
+        if (newHash === "SOLVED") {
+          return [...currentNode.moves, move];
+        }
+        
+        if (!this.visitedStates.has(newHash)) {
+          queue.push({ stateHash: newHash, moves: [...currentNode.moves, move], depth: currentNode.depth + 1 });
+        }
+      }
+    }
+  }
+}
+```
+
+### State Hashing Strategy
+
+The solver uses position and orientation hashing for efficient state comparison:
+
+```typescript
+private hashWhiteCrossState(state: CubieState): string {
+  const whiteEdges = this.findWhiteEdges(state);
+  
+  // Check if all edges are solved (position AND orientation)
+  const allSolved = whiteEdges.every(edge => {
+    const positionCorrect = /* check if in original position */;
+    const orientationCorrect = getCubieDisplayColor(edge.cubie, 'top', 3) === 'white';
+    return positionCorrect && orientationCorrect;
+  });
+  
+  if (allSolved) return "SOLVED";
+  
+  // Create hash from current positions and orientations
+  const edgeStates = whiteEdges.map(edge => ({
+    currentPos: edge.cubie.renderPosition.join(','),
+    orientation: getCubieDisplayColor(edge.cubie, 'top', 3) === 'white' ? 'W' : 'X'
+  }));
+  
+  return edgeStates.map(state => `${state.currentPos}:${state.orientation}`).join('|');
+}
+```
+
+### Key Features
+
+**Optimal Solutions**: BFS guarantees shortest path to solution (typically 4-8 moves)
+
+**Loop Prevention**: State hashing prevents revisiting identical cube configurations
+
+**Move Pruning**: 
+- Avoids immediate move inversions (R followed by R')
+- Prevents redundant consecutive face moves
+- Prioritizes relevant moves (D, U for white cross)
+
+**Robust Detection**:
+- Checks both position and orientation of white edges
+- Handles any initial cube configuration
+- Validates complete white cross formation
 
 ---
 
