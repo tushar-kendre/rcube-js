@@ -80,17 +80,11 @@ function App() {
     initialState,
     animationDuration: 600, // 600ms animation duration for smoother moves
     onSequenceComplete: (updatedState) => {
-      console.log("=== SEQUENCE COMPLETED ===");
-      console.log("Final cube state:", updatedState);
-      
       // If this was a white cross solve, validate the result
       if (cubeSize === 3) {
         const solver = new WhiteCrossSolver(updatedState);
-        const isValid = solver.validateSolution(updatedState);
-        console.log("White cross validation:", isValid ? "PASSED" : "FAILED");
+        solver.validateSolution(updatedState);
       }
-      
-      console.log("========================");
     },
   });
 
@@ -99,8 +93,8 @@ function App() {
    *
    * @param cubie - The clicked cubie
    */
-  const handleCubieClick = useCallback((cubie: Cubie) => {
-    console.log(`Clicked ${cubie.type} cubie:`, cubie);
+  const handleCubieClick = useCallback((_cubie: Cubie) => {
+    // Cubie click handler (could be used for debugging or interaction)
   }, []);
 
   /**
@@ -151,20 +145,12 @@ function App() {
     }
 
     try {
-      console.log("=== STARTING WHITE CROSS SOLVER ===");
       const solver = new WhiteCrossSolver(cubeState);
       const solutionMoves = solver.solve();
       
       if (solutionMoves.length > 0) {
-        console.log("Solution found! Executing moves:", solutionMoves.join(" "));
         executeMovesWithLogging(solutionMoves);
-      } else {
-        console.log("White cross is already solved!");
       }
-      
-      // Validate solution on the final animated state, not the solver state
-      // We'll validate after the animation completes
-      console.log("White cross solver completed. Validation will occur after animation.");
       
     } catch (error) {
       console.error("Error solving white cross:", error);

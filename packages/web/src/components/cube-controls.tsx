@@ -212,7 +212,6 @@ export default function CubeControls({
   const handleCustomExecute = () => {
     // Parse space-separated move sequence
     const seq = customSeq.trim().split(/\s+/) as MoveNotation[];
-    console.log("Executing custom sequence:", seq);
     if (seq.length > 0) {
       executeMoves(seq);
     }

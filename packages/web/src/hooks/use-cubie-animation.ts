@@ -231,7 +231,6 @@ export function useCubieAnimation({
     if (moves.length === 0) return;
 
     const normalizedMoves = moves.map(normalizeMoveNotation);
-    console.log(`Executing move sequence: [${normalizedMoves.join(', ')}]`);
     if (animationState.isAnimating) {
       // Add to queue if already animating
       moveQueueRef.current.push(...normalizedMoves);

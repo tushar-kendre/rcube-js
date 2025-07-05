@@ -45,35 +45,12 @@ export class WhiteCrossSolver {
     'R', "R'", 'U', "U'", 'L', "L'", 'F', "F'", 'B', "B'", 'D', "D'"
   ];
   private targetStateHash: string;
-  private debugLogs: string[] = [];
-  private logsWritten = false; // Prevent multiple file downloads
 
   constructor(initialState: CubieState) {
     if (initialState.size !== 3) {
       throw new Error("White cross solver only supports 3x3 cubes");
     }
     this.initialState = copyCubieState(initialState);
-    
-    // Debug: Check cube state integrity
-    this.debugLog(`Cube state has ${this.initialState.cubies.length} total cubies`);
-    this.debugLog(`Position map has ${this.initialState.positionMap.size} entries`);
-    
-    const edgeCount = this.initialState.cubies.filter(c => c.type === 'edge').length;
-    const cornerCount = this.initialState.cubies.filter(c => c.type === 'corner').length;
-    const centerCount = this.initialState.cubies.filter(c => c.type === 'center').length;
-    
-    this.debugLog(`Cubie types: ${edgeCount} edges, ${cornerCount} corners, ${centerCount} centers`);
-    
-    // Debug: Check which positions are in the map
-    const mappedPositions: string[] = [];
-    this.initialState.positionMap.forEach((_, posKey) => {
-      mappedPositions.push(posKey);
-    });
-    this.debugLog(`Mapped positions: ${mappedPositions.sort().join(', ')}`);
-    
-    // Debug: Check cubie renderPositions
-    const renderPositions = this.initialState.cubies.map(c => `[${c.renderPosition.join(',')}]`);
-    this.debugLog(`Cubie render positions: ${renderPositions.sort().join(', ')}`);
     
     // Create the target state hash (solved white cross)
     this.targetStateHash = this.createSolvedWhiteCrossHash();
@@ -91,18 +68,11 @@ export class WhiteCrossSolver {
    * Solves the white cross using optimized graph-based BFS
    */
   solve(): CubieMoveNotation[] {
-    this.debugLog("=== STARTING OPTIMIZED GRAPH-BASED WHITE CROSS SOLVER ===");
-    this.debugLog("Target state hash:", this.targetStateHash);
-    
     const startState = copyCubieState(this.initialState);
     const startHash = this.hashWhiteCrossState(startState);
     
-    this.debugLog("Start state hash:", startHash);
-    
     // Check if already solved
     if (startHash === this.targetStateHash) {
-      this.debugLog("White cross already solved!");
-      this.writeDebugLogs();
       return [];
     }
 
@@ -120,16 +90,9 @@ export class WhiteCrossSolver {
     let nodesExplored = 0;
     const maxNodes = 50000; // Increased node limit
     
-    this.debugLog(`Searching with max depth: ${maxDepth}, max nodes: ${maxNodes}`);
-    
     while (queue.length > 0 && nodesExplored < maxNodes) {
       const currentNode = queue.shift()!;
       nodesExplored++;
-      
-      // Log progress every 5000 nodes (reduced frequency for performance)
-      if (nodesExplored % 5000 === 0) {
-        this.debugLog(`Explored ${nodesExplored} nodes, queue size: ${queue.length}, depth: ${currentNode.depth}`);
-      }
       
       // Skip if we've gone too deep
       if (currentNode.depth >= maxDepth) {
@@ -157,15 +120,6 @@ export class WhiteCrossSolver {
         
         // Check if this is the target state (solved white cross)
         if (newHash === this.targetStateHash) {
-          this.debugLog("=== WHITE CROSS SOLVED ===");
-          this.debugLog("Solution found at depth:", currentNode.depth + 1);
-          this.debugLog("Total moves:", newMoves.length);
-          this.debugLog("Move sequence:", newMoves.join(" "));
-          this.debugLog("States explored:", this.visitedStates.size);
-          
-          // Write debug logs to file
-          this.writeDebugLogs();
-          
           return newMoves;
         }
         
@@ -178,12 +132,6 @@ export class WhiteCrossSolver {
         });
       }
     }
-    
-    this.debugLog(`Could not solve white cross within limits (depth: ${maxDepth}, nodes: ${maxNodes})`);
-    this.debugLog("States explored:", this.visitedStates.size);
-    
-    // Write debug logs to file even if no solution found
-    this.writeDebugLogs();
     
     // Try a fallback approach with a different strategy
     return this.fallbackSolve();
@@ -260,8 +208,6 @@ export class WhiteCrossSolver {
    * Fallback solver using a simpler approach if BFS fails
    */
   private fallbackSolve(): CubieMoveNotation[] {
-    this.debugLog("=== USING FALLBACK SOLVER ===");
-    
     // Try common white cross algorithms with limited moves
     const commonSequences: CubieMoveNotation[][] = [
       ['F', 'D', "R'", "D'"],
@@ -284,15 +230,11 @@ export class WhiteCrossSolver {
         
         const currentHash = this.hashWhiteCrossState(currentState);
         if (currentHash === this.targetStateHash) {
-          this.debugLog("Fallback solution found:", allMoves.join(" "));
-          this.writeDebugLogs();
           return allMoves;
         }
       }
     }
     
-    this.debugLog("No fallback solution found");
-    this.writeDebugLogs();
     return [];
   }
 
@@ -314,17 +256,8 @@ export class WhiteCrossSolver {
   private hashWhiteCrossState(state: CubieState): string {
     const whiteEdges = this.findWhiteEdges(state);
     
-    this.debugLog(`Total white edges found: ${whiteEdges.length}`);
-    whiteEdges.forEach(edge => {
-      const [currentX, currentY, currentZ] = edge.cubie.renderPosition;
-      const [originalX, originalY, originalZ] = edge.cubie.originalRenderPosition;
-      const whiteOnTop = getCubieDisplayColor(edge.cubie, 'top', 3) === 'white';
-      this.debugLog(`  White edge at [${currentX},${currentY},${currentZ}], original [${originalX},${originalY},${originalZ}], whiteOnTop=${whiteOnTop}, solved=${edge.isSolved}`);
-    });
-    
     // Check if we have exactly 4 white edges
     if (whiteEdges.length !== 4) {
-      this.debugLog(`Wrong number of white edges: ${whiteEdges.length}`);
       return `INCOMPLETE:${whiteEdges.length}`;
     }
     
@@ -338,7 +271,6 @@ export class WhiteCrossSolver {
     });
     
     if (allSolved) {
-      this.debugLog("All white edges are solved (position AND orientation)!");
       return "SOLVED";
     }
     
@@ -361,7 +293,6 @@ export class WhiteCrossSolver {
     
     const hash = edgeStates.map(state => `${state.currentPos}:${state.orientation}`).join('|');
     
-    this.debugLog(`Hash for non-solved state: ${hash}`);
     return hash;
   }
 
@@ -373,7 +304,6 @@ export class WhiteCrossSolver {
     
     // Simply filter all cubies for edges that have white in their colors
     const allEdges = state.cubies.filter(cubie => cubie.type === 'edge');
-    this.debugLog(`Total edges in cube: ${allEdges.length}`);
     
     for (const cubie of allEdges) {
       // Check if this edge has a white sticker
@@ -392,16 +322,9 @@ export class WhiteCrossSolver {
           cubie,
           isSolved
         });
-        
-        // Debug log each white edge found (limited for performance)
-        if (this.debugLogs.length < 50) {
-          const whiteOnTop = getCubieDisplayColor(cubie, 'top', 3) === 'white';
-          this.debugLog(`Found white edge at [${currentX},${currentY},${currentZ}], original at [${originalX},${originalY},${originalZ}], positionOK=${positionCorrect}, whiteOnTop=${whiteOnTop}, solved=${isSolved}`);
-        }
       }
     }
 
-    this.debugLog(`Found ${whiteEdges.length} white edges out of ${allEdges.length} total edges`);
     return whiteEdges;
   }
 
@@ -417,47 +340,7 @@ export class WhiteCrossSolver {
    */
   validateSolution(finalState: CubieState): boolean {
     const whiteEdges = this.findWhiteEdges(finalState);
-    const solved = whiteEdges.every(edge => edge.isSolved);
-    
-    this.debugLog("=== WHITE CROSS VALIDATION ===");
-    whiteEdges.forEach((edge, index) => {
-      const [currentX, currentY, currentZ] = edge.cubie.renderPosition;
-      const [originalX, originalY, originalZ] = edge.cubie.originalRenderPosition;
-      this.debugLog(`White edge ${index + 1}: ${edge.isSolved ? 'SOLVED' : 'NOT SOLVED'} at [${currentX},${currentY},${currentZ}], original [${originalX},${originalY},${originalZ}]`);
-    });
-    this.debugLog(`Overall validation: ${solved ? 'PASSED' : 'FAILED'}`);
-    
-    return solved;
+    return whiteEdges.every(edge => edge.isSolved);
   }
 
-  /**
-   * Add a debug log entry
-   */
-  private debugLog(...args: any[]): void {
-    const message = args.map(arg => typeof arg === 'string' ? arg : JSON.stringify(arg)).join(' ');
-    this.debugLogs.push(`${new Date().toISOString()}: ${message}`);
-  }
-
-  /**
-   * Write debug logs to file
-   */
-  private async writeDebugLogs(): Promise<void> {
-    if (this.logsWritten) {
-      return; // Prevent multiple downloads
-    }
-    this.logsWritten = true;
-    
-    const logContent = this.debugLogs.join('\n');
-    const blob = new Blob([logContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    
-    // Create a temporary download link
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'solver-debug.log';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
 }
