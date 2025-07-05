@@ -1,4 +1,4 @@
-import { COLOR_MAP, CubeFace, DEFAULT_CUBE_COLORS } from "@/types/cube-pieces";
+import { COLOR_MAP, CubeFace, DEFAULT_CUBE_COLORS } from "@/types/cube-core";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useRef } from "react";
 import { Vector3 } from "three";

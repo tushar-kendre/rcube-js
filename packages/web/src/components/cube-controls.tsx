@@ -1,5 +1,5 @@
-import { generateScramble } from "@/lib/cube-piece-moves";
-import { MoveNotation } from "@/types/cube-pieces";
+import { MoveNotation } from "@/types/cube-core";
+import { CubieMoveNotation } from "@/types/cubie";
 import { useEffect, useState } from "react";
 
 /**
@@ -11,15 +11,17 @@ interface CubeControlsProps {
   /** Whether animations can be stopped (true when actively animating or has queued moves) */
   canStopAnimation: boolean;
   /** Function to execute a single move */
-  executeMove: (move: MoveNotation) => void;
+  executeMove: (move: MoveNotation | CubieMoveNotation) => void;
   /** Function to execute a sequence of moves */
-  executeMoves: (moves: MoveNotation[]) => void;
+  executeMoves: (moves: (MoveNotation | CubieMoveNotation)[]) => void;
   /** Function to reset cube to solved state */
   resetCube: () => void;
   /** Function to stop current animations */
   stopAnimation: () => void;
   /** Function to run test sequence */
   testSequence: () => void;
+  /** Function to solve white cross (3x3 only) */
+  solveWhiteCross?: () => void;
   /** Current cube size */
   cubeSize: number;
   /** Callback when cube size changes */
@@ -33,8 +35,8 @@ const baseFaces = ["R", "L", "U", "D", "F", "B"];
  * Generates appropriate moves for the given cube size
  * Avoids redundant moves like 3R and 2L' on a 4x4x4 cube
  */
-const generateMovesForCubeSize = (cubeSize: number): MoveNotation[] => {
-  const moves: MoveNotation[] = [];
+const generateMovesForCubeSize = (cubeSize: number): CubieMoveNotation[] => {
+  const moves: CubieMoveNotation[] = [];
   
   // Always include outer face moves
   baseFaces.forEach(face => {
@@ -63,6 +65,115 @@ const generateMovesForCubeSize = (cubeSize: number): MoveNotation[] => {
 };
 
 /**
+ * Extracts the face letter from a move notation
+ * @param move - Move notation like "R", "2R'", "3U2"
+ * @returns The face letter (R, L, U, D, F, B)
+ */
+function getMoveFace(move: MoveNotation): string {
+  // Remove layer numbers and modifiers to get the base face
+  return move.replace(/^[0-9]*/, '').replace(/['^2]$/, '').charAt(0);
+}
+
+/**
+ * Checks if two moves cancel each other out
+ * @param move1 - First move
+ * @param move2 - Second move
+ * @returns True if the moves cancel each other
+ */
+function movesCancel(move1: MoveNotation, move2: MoveNotation): boolean {
+  const face1 = getMoveFace(move1);
+  const face2 = getMoveFace(move2);
+  
+  // Different faces can't cancel
+  if (face1 !== face2) {
+    return false;
+  }
+  
+  // Extract layer numbers
+  const layer1 = move1.match(/^([0-9]*)/)?.[1] || '1';
+  const layer2 = move2.match(/^([0-9]*)/)?.[1] || '1';
+  
+  // Different layers can't cancel
+  if (layer1 !== layer2) {
+    return false;
+  }
+  
+  // Extract modifiers
+  const modifier1 = move1.replace(/^[0-9]*[A-Z]/, '');
+  const modifier2 = move2.replace(/^[0-9]*[A-Z]/, '');
+  
+  // Check for canceling combinations
+  if ((modifier1 === '' && modifier2 === "'") || 
+      (modifier1 === "'" && modifier2 === '') ||
+      (modifier1 === '2' && modifier2 === '2')) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Generates a random scramble sequence for the cube
+ *
+ * Creates a sequence of random valid moves while avoiding
+ * consecutive moves on the same face to ensure good mixing.
+ * Includes inner layer moves for larger cubes.
+ *
+ * @param length - Number of moves in the scramble (default: 20)
+ * @param cubeSize - Size of the cube (3 for 3x3x3, 4 for 4x4x4, etc.) (default: 3)
+ * @returns Array of move notations representing the scramble
+ */
+function generateScramble(
+  length: number = 20,
+  cubeSize: number = 3,
+): MoveNotation[] {
+  const faces = ["R", "L", "U", "D", "F", "B"];
+  const modifiers = ["", "'", "2"];
+  const moves: MoveNotation[] = [];
+
+  // Generate moves for all possible layers
+  faces.forEach((face) => {
+    modifiers.forEach((modifier) => {
+      // Outer face layer (e.g., R, R', R2)
+      moves.push(`${face}${modifier}`);
+
+      // Inner layer moves for cubes larger than 3x3x3
+      if (cubeSize > 3) {
+        // For cubes larger than 3x3x3, generate inner layer moves
+        // Layer 2 to (cubeSize - 1) are the inner layers
+        for (let layer = 2; layer < cubeSize; layer++) {
+          moves.push(`${layer}${face}${modifier}`);
+        }
+      }
+    });
+  });
+
+  const scramble: MoveNotation[] = [];
+
+  for (let i = 0; i < length; i++) {
+    let move: MoveNotation;
+    let attempts = 0;
+    const maxAttempts = 100; // Prevent infinite loop
+
+    do {
+      // Select a random move from available moves
+      move = moves[Math.floor(Math.random() * moves.length)];
+      attempts++;
+    } while (
+      attempts < maxAttempts &&
+      scramble.length > 0 &&
+      // Avoid consecutive moves on the same face/axis for better scrambling
+      (getMoveFace(move) === getMoveFace(scramble[scramble.length - 1]) ||
+        // Avoid moves that cancel out the previous move
+        movesCancel(move, scramble[scramble.length - 1]))
+    );
+    scramble.push(move);
+  }
+
+  return scramble;
+}
+
+/**
  * Control panel component for interacting with the Rubik's cube
  *
  * Provides buttons for:
@@ -84,6 +195,7 @@ export default function CubeControls({
   resetCube,
   stopAnimation,
   testSequence,
+  solveWhiteCross,
   cubeSize,
   onCubeSizeChange,
 }: CubeControlsProps) {
@@ -237,6 +349,15 @@ export default function CubeControls({
         >
           Test R U R' U'
         </button>
+        {solveWhiteCross && cubeSize === 3 && (
+          <button
+            onClick={solveWhiteCross}
+            disabled={isAnimating}
+            className="w-full px-4 py-2 bg-green-600 text-white rounded disabled:opacity-50"
+          >
+            Solve White Cross
+          </button>
+        )}
         <button
           onClick={resetCube}
           disabled={isAnimating}
