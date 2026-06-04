@@ -1,42 +1,12 @@
-// Core cube face identifiers
-export type CubeFace = "front" | "back" | "left" | "right" | "top" | "bottom";
-
-// Standard Rubik's cube colors
-export type CubeColor =
-  | "white"
-  | "yellow"
-  | "red"
-  | "orange"
-  | "blue"
-  | "green";
-
 /**
- * Move notation string representing cube rotations
- * Examples: 'R', 'R2', '2R', "3U'", etc.
- * Parsed dynamically based on cube size and notation standards
+ * Compatibility re-exports for UI components (e.g. the orientation HUD).
+ *
+ * The canonical definitions now live in the framework-agnostic cube module;
+ * this file keeps the older `@/types/cube-core` import path working.
  */
+
+export type { CubeFace, CubeColor } from "../cube/model/faces";
+export { DEFAULT_CUBE_COLORS, COLOR_MAP } from "../cube/model/faces";
+
+/** Free-form move notation string (e.g. "R", "R'", "2L2"). */
 export type MoveNotation = string;
-
-/**
- * Default color mapping for each face in solved state
- */
-export const DEFAULT_CUBE_COLORS: Record<CubeFace, CubeColor> = {
-  front: "red",
-  back: "orange",
-  left: "green",
-  right: "blue",
-  top: "white",
-  bottom: "yellow",
-};
-
-/**
- * Color mapping from cube colors to hex color codes for rendering
- */
-export const COLOR_MAP: Record<CubeColor, string> = {
-  white: "#ffffff",
-  yellow: "#ffff00",
-  red: "#ff0000",
-  orange: "#ff8800",
-  blue: "#0000ff",
-  green: "#00ff00",
-};
