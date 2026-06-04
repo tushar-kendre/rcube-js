@@ -1,13 +1,12 @@
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 
-// Application entry point - sets up React root and providers
 createRoot(document.getElementById("root")!).render(
-  <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-    {/* Router setup with future flags for React Router v7 compatibility */}
+  <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
     <BrowserRouter
       future={{
         v7_startTransition: true,
@@ -16,9 +15,9 @@ createRoot(document.getElementById("root")!).render(
       basename={import.meta.env.MODE === "development" ? "/" : "/rcube-js/"}
     >
       <Routes>
-        {/* Main application route */}
         <Route path="/" element={<App />} />
       </Routes>
     </BrowserRouter>
+    <Toaster richColors closeButton position="bottom-right" />
   </ThemeProvider>,
 );

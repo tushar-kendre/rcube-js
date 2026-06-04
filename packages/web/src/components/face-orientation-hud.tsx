@@ -163,7 +163,7 @@ export function FaceOrientationHUD({ isAnimating = false, visibleFaces }: FaceOr
           .map((face: VisibleFace) => (
             <div
               key={face.face}
-              className="flex items-center justify-center w-16 h-16 rounded-full border-2 border-white/30 backdrop-blur-sm transition-all duration-200"
+              className="flex items-center justify-center w-16 h-16 rounded-full border-2 border-border backdrop-blur-sm transition-all duration-200 bg-card/80"
               style={{
                 backgroundColor: `${face.color}40`, // 25% opacity
                 borderColor: face.color,
@@ -171,8 +171,7 @@ export function FaceOrientationHUD({ isAnimating = false, visibleFaces }: FaceOr
               }}
             >
               <span 
-                className="text-white font-bold text-lg drop-shadow-lg"
-                style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}
+                className="text-foreground font-bold text-lg drop-shadow-sm"
               >
                 {face.label[0]}
               </span>
@@ -214,7 +213,7 @@ export function FaceOrientationHUD({ isAnimating = false, visibleFaces }: FaceOr
               className={`absolute ${positionClass} transform ${transform}`}
             >
               <div
-                className="flex items-center justify-center w-12 h-12 rounded-lg border border-white/20 backdrop-blur-sm transition-all duration-200"
+                className="flex items-center justify-center w-12 h-12 rounded-lg border border-border backdrop-blur-sm transition-all duration-200 bg-card/80"
                 style={{
                   backgroundColor: `${face.color}30`, // 19% opacity
                   borderColor: `${face.color}80`,
@@ -222,8 +221,7 @@ export function FaceOrientationHUD({ isAnimating = false, visibleFaces }: FaceOr
                 }}
               >
                 <span 
-                  className="text-white font-semibold text-sm drop-shadow-lg"
-                  style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}
+                  className="text-foreground font-semibold text-sm"
                 >
                   {face.label[0]}
                 </span>
@@ -233,8 +231,8 @@ export function FaceOrientationHUD({ isAnimating = false, visibleFaces }: FaceOr
         })}
 
       {/* Face legend in bottom-left corner */}
-      <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-        <h4 className="text-white text-xs font-semibold mb-2 opacity-80">Cube Faces</h4>
+      <div className="absolute bottom-4 left-4 bg-card/80 backdrop-blur-sm rounded-lg p-3 border border-border">
+        <h4 className="text-foreground text-xs font-semibold mb-2 opacity-80">Cube Faces</h4>
         <div className="grid grid-cols-2 gap-1 text-xs">
           {Object.entries(DEFAULT_CUBE_COLORS).map(([face, color]) => {
             const notation = face === "front" ? "F" : 
@@ -246,10 +244,10 @@ export function FaceOrientationHUD({ isAnimating = false, visibleFaces }: FaceOr
             return (
               <div key={face} className="flex items-center gap-1.5">
                 <div
-                  className="w-3 h-3 rounded-sm border border-white/30"
+                  className="w-3 h-3 rounded-sm border border-border"
                   style={{ backgroundColor: COLOR_MAP[color] }}
                 />
-                <span className="text-white/80 capitalize">{notation}</span>
+                <span className="text-muted-foreground capitalize">{notation}</span>
               </div>
             );
           })}
