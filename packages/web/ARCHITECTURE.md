@@ -1,797 +1,183 @@
-# RCube Web Project - Technical Architecture Documentation
+# RCube Web - Architecture
 
-## Overview
+A 3D Rubik's cube simulator built with React, TypeScript, and Three.js
+(via React Three Fiber). It supports any N×N×N size with smooth, queued move
+animations.
 
-The RCube web project is a sophisticated 3D Rubik's cube simulator built with React, TypeScript, and Three.js. It features a universal cubie-based data structure that supports any N×N×N cube size, with smooth animations, optimal move execution, and a graph-based white cross solver.
+The codebase is organized into four layers with strict, one-directional
+dependencies:
 
-## Table of Contents
+```
+cube/    pure cube logic (no React, no Three.js)
+  ▲
+render/  Three.js / R3F components that render a VisualCubieState
+  ▲
+app/     React controller hook that owns state and the animation queue
+  ▲
+App.tsx  wires the controller to the renderer and the control panel
+```
 
-1. [Three.js Setup & Architecture](#threejs-setup--architecture)
-2. [Cubie-Based Implementation](#cubie-based-implementation)
-3. [Moves Implementation](#moves-implementation)
-4. [Animation System](#animation-system)
-5. [White Cross Solver](#white-cross-solver)
-6. [Performance Optimizations](#performance-optimizations)
-7. [Runtime Complexity Analysis](#runtime-complexity-analysis)
+Solver algorithms are intentionally **not** part of the current codebase. The
+`cube/` module is designed so solvers can be layered on top later without
+touching the renderer or UI.
 
 ---
 
-## Three.js Setup & Architecture
+## 1. `cube/` — Framework-agnostic logic
 
-### Canvas Configuration
+This module contains no React or Three.js imports. It is the source of truth for
+cube state and moves and is fully unit-tested (`cube.test.ts`).
 
-The 3D scene is initialized in `App.tsx` using React Three Fiber, which provides a React-friendly wrapper around Three.js:
+### Models
 
-```tsx
-<Canvas
-  camera={{ position: [8, 8, 8], fov: 50 }}
-  className="bg-gradient-to-br from-background to-muted"
->
+There are three state representations, each with a clear role:
+
+| Representation     | File                  | Purpose                                   |
+| ------------------ | --------------------- | ----------------------------------------- |
+| `CubeState3x3`     | `model/state-3x3.ts`  | Canonical CP/CO/EP/EO 3×3 state (solver-ready) |
+| `GridCubeState`    | `model/state-grid.ts` | General N×N sticker grid for any size     |
+| `VisualCubieState` | `model/state-visual.ts` | Flat, render-facing cubie list          |
+
+- **`CubeState3x3`** stores corner permutation/orientation (CP/CO) and edge
+  permutation/orientation (EP/EO). This compact form is what future solvers will
+  operate on, and it powers O(1) precomputed move tables.
+- **`GridCubeState`** models each visible sticker by position, which scales to
+  any size at the cost of the compact invariants the 3×3 form provides.
+- **`VisualCubieState`** is the only thing the renderer consumes: a list of
+  `VisualCubie` objects, each with a stable `id`, a current `gridPosition`, and
+  the `stickerColors` shown on its faces.
+
+### `CubeModel` facade
+
+`model/cube-model.ts` exposes a single immutable interface used by the rest of
+the app:
+
+```ts
+interface CubeModel {
+  readonly size: number;
+  isSolved(): boolean;
+  applyMove(move: Move): CubeModel;
+  applySequence(moves: Move[]): CubeModel;
+  toVisual(): VisualCubieState;
+  readonly canonicalState: CubeState3x3 | null; // 3×3 only
+}
 ```
 
-**Camera Setup:**
-- **Position**: `[8, 8, 8]` - Positioned at an isometric view for optimal cube visibility
-- **Field of View**: 50 degrees - Balanced perspective without distortion
-- **Auto-rotation**: Disabled during animations to prevent interference
+`createCubeModel(size)` returns the canonical 3×3 model for size 3 and the grid
+model otherwise. Every operation returns a new model, so React can rely on
+reference changes.
 
-### Lighting System
+### Moves
 
-The cube uses a dual-lighting setup in `cubie-rubiks-cube.tsx`:
+- `moves/notation.ts` parses/formats notation (`R`, `R'`, `R2`, `2L`, …) into a
+  `Move { face, layer, amount }`, where `amount` is the number of clockwise
+  quarter turns (1, 2, or 3).
+- `moves/tables-3x3.ts` holds precomputed permutation/orientation tables so a
+  3×3 move is an O(1) array remap.
+- `moves/apply.ts` applies a `Move` (or sequence) to a `CubeState3x3`.
 
-```tsx
-<ambientLight intensity={0.8} />
-<directionalLight position={[10, 10, 5]} intensity={0.8} />
-```
+### Conversion & validation
 
-**Lighting Design Rationale:**
-- **Ambient Light**: Provides uniform base illumination (0.8 intensity) to prevent harsh shadows
-- **Directional Light**: Positioned at `[10, 10, 5]` to create subtle depth and surface definition
-- Combined intensities create optimal color reproduction for cube stickers
-
-### OrbitControls Integration
-
-The orbit controls provide intuitive camera manipulation:
-
-```tsx
-<OrbitControls
-  enablePan={false}        // Prevents accidental camera displacement
-  enableZoom={true}        // Allows zoom for detail inspection
-  enableRotate={!isAnimating}  // Disables during moves to prevent visual conflicts
-  autoRotate={false}
-  minDistance={3}          // Prevents camera from going inside cube
-  maxDistance={20}         // Limits zoom out for performance
-/>
-```
-
-**Performance Consideration**: Camera rotation is disabled during animations to prevent user interference with move visualization.
+- `convert/facelets.ts` — `CubeState3x3` ↔ 54-facelet array (for future solver
+  I/O and standard cube strings).
+- `convert/visual.ts` — `CubeState3x3` → `VisualCubieState`.
+- `validate/solved.ts` — `isSolved`, `isValidState` (parity checks).
+- `validate/hash.ts` — `hashState` / `hashEdges` fast hashing primitives kept
+  for future solver use.
 
 ---
 
-## Cubie-Based Implementation
+## 2. `render/` — Three.js rendering
 
-### Universal Data Structure
+The renderer is a pure function of `VisualCubieState` plus an optional
+animation descriptor. It never imports the logical models directly.
 
-The cube implementation uses a universal cubie-based data structure that supports any N×N×N cube:
+### Shared resources (`materials.ts`)
 
-#### Core Types
+Geometries and materials are module-level singletons, created once and reused by
+every cubie, so an N×N cube allocates a constant number of GPU resources:
 
-```typescript
-// 3D position coordinates in cube space
-export type Position3D = [number, number, number];
+- one shared `BoxGeometry` for cubie bodies,
+- one shared `PlaneGeometry` for stickers,
+- one shared dark body material,
+- one cached `MeshLambertMaterial` per sticker color.
 
-// Cube face identifiers
-export type CubeFace = "front" | "back" | "left" | "right" | "top" | "bottom";
+### `CubiePiece`
 
-// Cubie types based on position in cube
-export type CubieType = "center" | "edge" | "corner";
+A memoized component that renders one cubie: the shared body plus a colored
+sticker plane for each visible face. `React.memo` compares grid position and
+sticker colors so cubies only re-render when their derived data actually
+changes.
 
-// Move notation for cubie operations
-export type CubieMoveNotation = 'R' | "R'" | 'U' | "U'" | 'L' | "L'" | 'F' | "F'" | 'B' | "B'" | 'D' | "D'";
-```
+### `RubiksCube` + `useFrame` animation
 
-#### Cubie Interface
+`components/rubiks-cube.tsx` splits cubies into two groups:
 
-```typescript
-interface Cubie {
-  id: string;                           // Unique identifier
-  type: CubieType;                     // Determines cubie category
-  renderPosition: Position3D;          // Current position for rendering
-  originalRenderPosition: Position3D;  // Original solved position
-  colors: Record<CubeFace, CubeColor>; // Colors on each face
-}
-```
+- **static** cubies render directly, and
+- **affected** cubies (the rotating layer) render under a pivot `group`.
 
-#### Cubie State Management
+The active layer rotation is driven entirely by `useFrame` mutating the pivot's
+`rotation` via a ref — **no React state changes per frame**. The component only
+re-renders when the committed `visual` changes, i.e. once per completed move.
 
-```typescript
-interface CubieState {
-  size: number;                                    // N for N×N×N cube
-  cubies: Cubie[];                                // All cubies in the cube
-  positionMap: Map<string, Cubie>;                // Fast position-based lookup
-}
-```
+An `AnimationDescriptor` (`render/animation.ts`) carries everything the frame
+loop needs: a monotonically increasing `moveId` (a change resets the pivot), the
+set of affected cubie ids, the rotation `axis`, signed `angle`, and duration.
+When a rotation reaches 100%, the component calls `onAnimationComplete` exactly
+once (guarded by `completedMoveRef`).
 
-### Key Features
-
-**Universal Design**: 
-- Supports any N×N×N cube size (3×3×3, 4×4×4, 5×5×5, etc.)
-- Dynamic position mapping for efficient lookups
-- Proper orientation tracking for each cubie
-
-**Position Management**:
-- `renderPosition`: Current position for 3D rendering
-- `originalRenderPosition`: Reference position for solved state
-- Automatic position map rebuilding after moves
-
-**Color System**:
-- Each cubie tracks colors on all 6 faces
-- Only visible faces are rendered with actual colors
-- Hidden faces use transparent colors
-
-### Cubie Creation Algorithm
-
-```typescript
-function createSolvedCubieState(size: number): CubieState {
-  const cubies: Cubie[] = [];
-  
-  for (let x = 0; x < size; x++) {
-    for (let y = 0; y < size; y++) {
-      for (let z = 0; z < size; z++) {
-        // Determine cubie type based on position
-        const type = determineCubieType(x, y, z, size);
-        
-        // Skip internal cubies (not visible)
-        if (type === null) continue;
-        
-        // Create cubie with solved colors
-        const cubie = createCubie(x, y, z, size, type);
-        cubies.push(cubie);
-      }
-    }
-  }
-  
-  return { size, cubies, positionMap: buildPositionMap(cubies) };
-}
-```
-interface CenterPiece extends CubePiece {
-  type: "center";
-  stickers: [Sticker];          // Exactly 1 sticker
-}
-
-interface EdgePiece extends CubePiece {
-  type: "edge";
-  stickers: [Sticker, Sticker]; // Exactly 2 stickers
-}
-
-interface CornerPiece extends CubePiece {
-  type: "corner";
-  stickers: [Sticker, Sticker, Sticker]; // Exactly 3 stickers
-}
-```
-
-**Design Benefits:**
-- Type safety prevents invalid piece configurations
-- Compile-time checking ensures proper sticker counts
-- Clear separation of concerns between piece types
-
-### Cube State Management
-
-The complete cube state is encapsulated in the `CubeState` interface:
-
-```typescript
-interface CubeState {
-  size: number;              // Cube dimension (3 for 3x3x3)
-  centers: CenterPiece[];    // 6 center pieces
-  edges: EdgePiece[];        // 12 edge pieces  
-  corners: CornerPiece[];    // 8 corner pieces
-}
-```
-
-### Cube Generation Algorithm
-
-The `createSolvedCube()` function generates a solved cube state using coordinate-based piece classification:
-
-```typescript
-export function createSolvedCube(size: number = 3): CubeState {
-  const offset = (size - 1) / 2;  // Center offset for positioning
-  
-  for (let x = 0; x < size; x++) {
-    for (let y = 0; y < size; y++) {
-      for (let z = 0; z < size; z++) {
-        const position: Position3D = [x - offset, y - offset, z - offset];
-        
-        // Determine visible faces based on boundary conditions
-        const stickers: Sticker[] = [];
-        if (px === -offset) stickers.push({ face: "left", color: "green" });
-        if (px === offset) stickers.push({ face: "right", color: "blue" });
-        // ... similar for all faces
-        
-        // Classify piece type by sticker count
-        if (stickers.length === 1) {
-          // Center piece logic
-        } else if (stickers.length === 2) {
-          // Edge piece logic  
-        } else if (stickers.length === 3) {
-          // Corner piece logic
-        }
-      }
-    }
-  }
-}
-```
-
-**Algorithm Complexity:** `O(n³)` where n is cube size - generates all positions once
-
-### 3D Rendering Implementation
-
-#### Cube Piece Component
-
-Each cube piece is rendered as a group containing:
-
-1. **Black cube body** (1×1×1 box geometry)
-2. **Colored stickers** (0.9×0.9 plane geometries)
-
-```typescript
-return (
-  <group position={[x, y, z]} onClick={handleClick}>
-    {/* Main cube body */}
-    <mesh ref={meshRef}>
-      <boxGeometry args={[1, 1, 1]} />
-      <meshLambertMaterial color="#000000" />
-    </mesh>
-    
-    {/* Stickers positioned with small offset to prevent z-fighting */}
-    {validStickers.map((sticker, index) => renderSticker(sticker, index))}
-  </group>
-);
-```
-
-#### Sticker Positioning Logic
-
-Stickers are positioned with precise offset calculations to prevent visual artifacts:
-
-```typescript
-const offset = 0.51; // Slightly outside cube surface
-
-switch (sticker.face) {
-  case "front":
-    stickerPosition = [0, 0, offset];
-    break;
-  case "right":
-    stickerPosition = [offset, 0, 0];
-    stickerRotation = [0, Math.PI / 2, 0];
-    break;
-  // ... rotations for all faces
-}
-```
-
-**Technical Details:**
-- **Offset value**: 0.51 prevents z-fighting while maintaining visual contact
-- **Rotation matrices**: Applied to orient stickers correctly on each face
-- **Plane geometry**: 0.9×0.9 size leaves small gaps for visual separation
+The old approach of remounting the whole cube via a `cubeVersion` key has been
+removed.
 
 ---
 
-## Moves Implementation
+## 3. `app/` — Controller
 
-### Move Notation Parser
+`app/hooks/use-cube-controller.ts` owns all mutable state and the move queue:
 
-The system supports standard Rubik's cube notation with extensions for larger cubes:
+- the `CubeModel` (in a ref) and its derived `VisualCubieState` (in state),
+- a FIFO move queue and the currently animating move,
+- the `AnimationDescriptor` exposed to the renderer.
 
-```typescript
-export function parseMove(notation: MoveNotation): Move {
-  // Regex: optional layer, face letter, optional modifiers
-  const match = notation.trim().toUpperCase().match(/^(\d*)([RLUDFB])(2)?(')?$/);
-  
-  const layer = layerStr ? parseInt(layerStr, 10) : 1;  // Default to face layer
-  const isDouble = Boolean(doubleStr);                   // 2 modifier
-  const prime = Boolean(primeStr);                       // ' modifier
-  
-  // Calculate rotation angle
-  const magnitude = isDouble ? Math.PI : Math.PI / 2;   // 180° or 90°
-  return { face, layer, clockwise: !prime, angle: clockwise ? magnitude : -magnitude };
-}
-```
+Flow of a move:
 
-**Supported Notation Examples:**
-- `R` - Right face clockwise
-- `R'` - Right face counterclockwise  
-- `R2` - Right face 180°
-- `2R` - Second layer from right
-- `3U'` - Third layer from top, counterclockwise
+1. `executeMove`/`executeMoves` parse notation into `Move`s and enqueue them. If
+   idle, the controller starts the next move.
+2. Starting a move computes its `MoveGeometry` (`getMoveGeometry`) and the set of
+   affected cubie ids, then publishes a new `AnimationDescriptor`.
+3. The renderer animates the pivot and calls `onAnimationComplete`.
+4. The controller commits the move to the model (`applyMove`), derives the new
+   `VisualCubieState`, and starts the next queued move (or goes idle).
 
-### Layer Detection Algorithm
-
-The system determines which pieces are affected by a move using geometric calculations:
-
-```typescript
-export function isPieceInFaceLayer(position: Position3D, face: CubeFace, size: number): boolean {
-  const [x, y, z] = position;
-  const offset = (size - 1) / 2;
-  
-  switch (face) {
-    case "right":
-      return Math.abs(x - offset) < 0.001;  // Floating-point tolerance
-    case "left":
-      return Math.abs(x + offset) < 0.001;
-    // ... similar for all faces
-  }
-}
-```
-
-**Floating-Point Handling:** Uses tolerance of 0.001 to handle JavaScript floating-point precision issues.
-
-### Position Rotation Mathematics
-
-The core move application uses 3D rotation matrices for each face:
-
-```typescript
-export function rotatePosition(position: Position3D, face: CubeFace, clockwise: boolean): Position3D {
-  const [x, y, z] = position;
-  
-  switch (face) {
-    case "right":  // Rotation around X-axis
-      return clockwise ? [x, -z, y] : [x, z, -y];
-      
-    case "top":    // Rotation around Y-axis  
-      return clockwise ? [z, y, -x] : [-z, y, x];
-      
-    case "front":  // Rotation around Z-axis
-      return clockwise ? [y, -x, z] : [-y, x, z];
-    // ... similar patterns for all faces
-  }
-}
-```
-
-**Rotation Matrices Applied:**
-- **X-axis rotation**: `(y,z) → (-z,y)` for clockwise
-- **Y-axis rotation**: `(x,z) → (z,-x)` for clockwise  
-- **Z-axis rotation**: `(x,y) → (y,-x)` for clockwise
-
-### Sticker Orientation Updates
-
-When pieces rotate, their stickers must be remapped to maintain visual consistency:
-
-```typescript
-export function rotateStickerFace(face: CubeFace, rotationFace: CubeFace, clockwise: boolean): CubeFace {
-  switch (rotationFace) {
-    case "right": // R moves - rotation around X-axis
-      if (clockwise) {
-        switch (face) {
-          case "front": return "bottom";
-          case "bottom": return "back";
-          case "back": return "top";
-          case "top": return "front";
-          case "right": return "right"; // Axis face unchanged
-          case "left": return "left";   // Opposite axis unchanged
-        }
-      }
-      // ... counterclockwise and other faces
-  }
-}
-```
-
-**Sticker Mapping Logic:**
-- Faces on the rotation axis remain unchanged
-- Adjacent faces cycle according to rotation direction
-- Mapping preserves the relative position of stickers on pieces
-
-### Move Application Algorithm
-
-The `applyMove()` function orchestrates the complete move execution:
-
-```typescript
-export function applyMove(state: CubeState, move: Move): CubeState {
-  // Handle 180° moves as two successive 90° moves for accuracy
-  if (Math.abs(move.angle) === Math.PI) {
-    const singleAngle = move.angle > 0 ? Math.PI / 2 : -Math.PI / 2;
-    const single: Move = { face: move.face, layer: move.layer, clockwise: move.angle > 0, angle: singleAngle };
-    return applyMove(applyMove(state, single), single);
-  }
-  
-  // Get affected pieces and create deep copy of state
-  const layerPieces = move.layer === 1 
-    ? getPiecesInFaceLayer(state, move.face)
-    : getPiecesInLayer(state, move.face, move.layer);
-    
-  // Apply rotations to positions and sticker orientations
-  layerPieces.forEach(piece => {
-    const newPosition = rotatePosition(piece.position, move.face, move.clockwise);
-    const rotatedStickers = piece.stickers.map(sticker => ({
-      ...sticker,
-      face: rotateStickerFace(sticker.face, move.face, move.clockwise)
-    }));
-    // Update piece in new state...
-  });
-}
-```
-
-**Double Move Handling:** 180° moves are decomposed into two 90° moves to ensure accuracy and maintain the same code path.
+Because the logical move is committed only when its animation finishes, the
+visible state and the model never diverge. `scramble`, `reset`, `stop`, and
+`setSize` manipulate the same queue/model.
 
 ---
 
-## Animation System
+## 4. `App.tsx` and UI
 
-### Animation State Management
+`App.tsx` instantiates the controller and passes `visual`, `animation`, and
+`onAnimationComplete` to `RubiksCube`, and the command callbacks to
+`CubeControls`. Heavy 3D modules (`Canvas`, `OrbitControls`, `RubiksCube`) and
+the control panel are lazy-loaded.
 
-The animation system tracks the current state of move transitions:
-
-```typescript
-interface AnimationState {
-  isAnimating: boolean;      // Global animation lock
-  currentMove: Move | null;  // Currently animating move
-  currentAngle: number;      // Current rotation angle
-  targetAngle: number;       // Final rotation angle
-  progress: number;          // Animation progress (0-1)
-}
-```
-
-### Frame-Based Animation Loop
-
-The animation hook uses `requestAnimationFrame` for smooth 60fps animations:
-
-```typescript
-const animate = (currentTime: number) => {
-  const elapsed = currentTime - startTimeRef.current;
-  const progress = Math.min(elapsed / animationDuration, 1);
-  
-  // Apply cubic ease-out function for natural motion
-  const easeProgress = 1 - Math.pow(1 - progress, 3);
-  const currentAngle = parsedMove.angle * easeProgress;
-  
-  if (progress < 1) {
-    animationFrameRef.current = requestAnimationFrame(animate);
-  } else {
-    // Animation complete - apply logical move and continue queue
-    setCubeState(prevState => applyMove(prevState, parsedMove));
-    processNextMove();
-  }
-};
-```
-
-**Easing Function:** Cubic ease-out (`1 - (1-t)³`) provides natural deceleration at move completion.
-
-### Split Rendering Architecture
-
-During animations, pieces are split into two rendering groups for optimal performance:
-
-```typescript
-// In RubiksCube component
-const staticPieces: CubePiece[] = [];
-const rotatingPieces: CubePiece[] = [];
-
-if (animationState?.isAnimating) {
-  allPieces.forEach(piece => {
-    const inLayer = isPieceInFaceLayer(piece.position, face, state.size);
-    if (inLayer) {
-      rotatingPieces.push(piece);
-    } else {
-      staticPieces.push(piece);
-    }
-  });
-}
-
-return (
-  <group>
-    {/* Static pieces render normally */}
-    {staticPieces.map(piece => <CubePieceComponent key={piece.id} piece={piece} />)}
-    
-    {/* Rotating pieces in animated group */}
-    <group ref={faceGroupRef}>
-      {rotatingPieces.map(piece => <CubePieceComponent key={piece.id} piece={piece} />)}
-    </group>
-  </group>
-);
-```
-
-**Performance Benefits:**
-- Only rotating pieces are updated each frame
-- Static pieces remain in GPU memory unchanged
-- Reduces render calls by ~85% (only 9 pieces animate vs 27 total)
-
-### Animation Frame Application
-
-The rotating group's transform is updated each frame:
-
-```typescript
-useFrame(() => {
-  if (animationState?.isAnimating && faceGroupRef.current) {
-    const { face, currentAngle } = animationState;
-    
-    // Reset to prevent rotation accumulation
-    faceGroupRef.current.rotation.set(0, 0, 0);
-    
-    // Apply rotation based on face axis
-    switch (face) {
-      case "right":
-        faceGroupRef.current.rotation.x = currentAngle;
-        break;
-      case "top":
-        faceGroupRef.current.rotation.y = currentAngle;
-        break;
-      case "front":
-        faceGroupRef.current.rotation.z = -currentAngle;
-        break;
-      // ... other faces
-    }
-  }
-});
-```
-
-### Move Queue System
-
-The animation system includes sophisticated queue management:
-
-```typescript
-const executeMove = useCallback((moveNotation: MoveNotation) => {
-  if (animationState.isAnimating) {
-    moveQueueRef.current.push(moveNotation);
-  } else {
-    animateMove(moveNotation);
-  }
-}, [animationState.isAnimating]);
-
-const executeMoves = useCallback((moves: MoveNotation[]) => {
-  const [firstMove, ...remainingMoves] = moves;
-  moveQueueRef.current.push(...remainingMoves);
-  executeMove(firstMove);
-}, [executeMove]);
-```
-
-**Queue Features:**
-- Automatic queuing during active animations
-- Sequential processing with 100ms inter-move delay for clarity
-- Queue clearing on stop/reset operations
+`components/cube-controls.tsx` is pure presentation: face buttons, a custom
+sequence input, scramble length, reset/stop, and a cube-size selector. It holds
+no cube logic. `components/face-orientation-hud.tsx` reads camera orientation
+each frame to label the currently visible faces.
 
 ---
 
-## White Cross Solver
+## Complexity notes
 
-### Graph-Based BFS Algorithm
+| Operation                  | Cost                                     |
+| -------------------------- | ---------------------------------------- |
+| 3×3 `applyMove`            | O(1) via precomputed tables              |
+| N×N `applyMove`            | O(n²) sticker remap                      |
+| `toVisual`                 | O(n²) visible cubies                     |
+| Per animation frame        | O(1) ref mutation (no React re-render)   |
+| React re-render per move   | once, on commit                          |
 
-The white cross solver implements a sophisticated graph search algorithm:
-
-```typescript
-class WhiteCrossSolver {
-  private visitedStates = new Map<string, CubieMoveNotation[]>();
-  private fundamentalMoves: CubieMoveNotation[] = [
-    'R', "R'", 'U', "U'", 'L', "L'", 'F', "F'", 'B', "B'", 'D', "D'"
-  ];
-  
-  solve(): CubieMoveNotation[] {
-    // BFS implementation with state hashing
-    const queue: GraphNode[] = [{ stateHash: startHash, moves: [], depth: 0 }];
-    
-    while (queue.length > 0) {
-      const currentNode = queue.shift()!;
-      
-      // Explore all valid moves from current state
-      for (const move of this.getValidMoves(currentNode.moves)) {
-        const newState = executeSolverMove(currentState, move);
-        const newHash = this.hashWhiteCrossState(newState);
-        
-        if (newHash === "SOLVED") {
-          return [...currentNode.moves, move];
-        }
-        
-        if (!this.visitedStates.has(newHash)) {
-          queue.push({ stateHash: newHash, moves: [...currentNode.moves, move], depth: currentNode.depth + 1 });
-        }
-      }
-    }
-  }
-}
-```
-
-### State Hashing Strategy
-
-The solver uses position and orientation hashing for efficient state comparison:
-
-```typescript
-private hashWhiteCrossState(state: CubieState): string {
-  const whiteEdges = this.findWhiteEdges(state);
-  
-  // Check if all edges are solved (position AND orientation)
-  const allSolved = whiteEdges.every(edge => {
-    const positionCorrect = /* check if in original position */;
-    const orientationCorrect = getCubieDisplayColor(edge.cubie, 'top', 3) === 'white';
-    return positionCorrect && orientationCorrect;
-  });
-  
-  if (allSolved) return "SOLVED";
-  
-  // Create hash from current positions and orientations
-  const edgeStates = whiteEdges.map(edge => ({
-    currentPos: edge.cubie.renderPosition.join(','),
-    orientation: getCubieDisplayColor(edge.cubie, 'top', 3) === 'white' ? 'W' : 'X'
-  }));
-  
-  return edgeStates.map(state => `${state.currentPos}:${state.orientation}`).join('|');
-}
-```
-
-### Key Features
-
-**Optimal Solutions**: BFS guarantees shortest path to solution (typically 4-8 moves)
-
-**Loop Prevention**: State hashing prevents revisiting identical cube configurations
-
-**Move Pruning**: 
-- Avoids immediate move inversions (R followed by R')
-- Prevents redundant consecutive face moves
-- Prioritizes relevant moves (D, U for white cross)
-
-**Robust Detection**:
-- Checks both position and orientation of white edges
-- Handles any initial cube configuration
-- Validates complete white cross formation
-
----
-
-## Performance Optimizations
-
-### Component Memoization Strategy
-
-#### Cube Piece Memoization
-```typescript
-export const CubePieceComponentMemo = memo(CubePieceComponent, () => {
-  // Always re-render to ensure fresh materials
-  return false;
-});
-```
-
-**Rationale:** Despite appearing counter-intuitive, always re-rendering prevents Three.js material caching issues that can cause visual artifacts.
-
-### Lazy Loading Architecture
-
-Critical components are lazy-loaded to reduce initial bundle size:
-
-```typescript
-const Canvas = lazy(() => import("@react-three/fiber").then(module => ({
-  default: module.Canvas
-})));
-
-const RubiksCube = lazy(() => import("./components/cube/rubiks-cube").then(module => ({
-  default: module.RubiksCube
-})));
-```
-
-**Benefits:**
-- Reduces initial JavaScript bundle by ~40%
-- Improves first contentful paint time
-- Enables progressive loading with fallback UI
-
-### Key Generation Strategy
-
-Unique keys force component recreation when necessary:
-
-```typescript
-const stickerHash = piece.stickers.map(s => `${s.face}:${s.color}`).join("-");
-const pieceStateKey = `${piece.id}-${piece.position.join(",")}-${stickerHash}`;
-
-return (
-  <group key={`${piece.id}-${pieceStateKey}`}>
-    <meshLambertMaterial key={`${uniqueKey}-material`} color={color} />
-  </group>
-);
-```
-
-**Purpose:** Forces material recreation when piece state changes to prevent color/position inconsistencies.
-
-### Memory Management
-
-#### Animation Frame Cleanup
-```typescript
-useEffect(() => {
-  return () => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-  };
-}, []);
-```
-
-#### Deep State Copying
-```typescript
-const newState: CubeState = {
-  centers: state.centers.map(piece => ({
-    ...piece,
-    position: [...piece.position],
-    stickers: piece.stickers.map(sticker => ({ ...sticker }))
-  }))
-};
-```
-
-**Immutability Benefits:**
-- Prevents accidental state mutations
-- Enables React optimization through reference equality
-- Facilitates debugging through state history
-
----
-
-## Runtime Complexity Analysis
-
-### Core Algorithm Complexities
-
-#### Cube Generation
-- **Function:** `createSolvedCube(size)`
-- **Complexity:** `O(n³)` where n = cube size
-- **Space:** `O(n²)` for storing visible pieces
-- **Justification:** Must check all n³ positions, but only O(n²) have visible faces
-
-#### Move Parsing
-- **Function:** `parseMove(notation)`  
-- **Complexity:** `O(1)` - constant time regex matching
-- **Space:** `O(1)` - fixed-size return object
-
-#### Layer Detection
-- **Function:** `isPieceInFaceLayer(position, face, size)`
-- **Complexity:** `O(1)` - simple coordinate comparison
-- **Space:** `O(1)` - no additional storage
-
-#### Position Rotation
-- **Function:** `rotatePosition(position, face, clockwise)`
-- **Complexity:** `O(1)` - direct coordinate transformation
-- **Space:** `O(1)` - returns new position array
-
-#### Move Application
-- **Function:** `applyMove(state, move)`
-- **Complexity:** `O(n²)` where n = cube size
-- **Space:** `O(n²)` for deep copying state
-- **Breakdown:**
-  - Layer piece identification: `O(n²)` - must check all pieces
-  - State deep copy: `O(n²)` - copy all pieces and stickers  
-  - Position updates: `O(n²)` - update each affected piece
-  - Sticker rotation: `O(s)` where s = stickers per piece (max 3)
-
-#### Animation Frame Processing
-- **Function:** Animation update loop
-- **Complexity:** `O(k)` where k = pieces in rotating layer (≤ n²)
-- **Space:** `O(1)` - updates transform matrix in-place
-- **Frequency:** 60fps during animations
-
-### Scalability Analysis
-
-For larger cube sizes, performance characteristics:
-
-| Cube Size | Total Pieces | Visible Pieces | Move Complexity | Memory Usage |
-|-----------|--------------|----------------|-----------------|--------------|
-| 3×3×3     | 27          | 26             | O(9)           | ~50KB        |
-| 4×4×4     | 64          | 56             | O(16)          | ~120KB       |
-| 5×5×5     | 125         | 98             | O(25)          | ~220KB       |
-| n×n×n     | n³          | ~n³-n          | O(n²)          | O(n²)        |
-
-**Critical Performance Points:**
-- **Animation performance** remains smooth up to 7×7×7 cubes
-- **Memory usage** grows quadratically but remains manageable  
-- **Move complexity** scales well due to efficient layer detection
-
-### Optimization Recommendations
-
-1. **For larger cubes (>5×5×5):**
-   - Implement level-of-detail (LOD) rendering
-   - Use instanced rendering for identical pieces
-   - Consider simplified animation for inner layers
-
-2. **For mobile devices:**
-   - Reduce animation frame rate to 30fps
-   - Implement automatic quality scaling
-   - Use lower-resolution textures
-
-3. **For real-time solving:**
-   - Implement move cancellation and optimization
-   - Use breadth-first search for shortest paths
-   - Cache common position patterns
-
----
-
-## Conclusion
-
-The RCube web project demonstrates sophisticated 3D graphics programming combined with efficient state management and animation systems. The architecture provides excellent performance for standard cube sizes while maintaining extensibility for larger configurations. The modular design facilitates testing, debugging, and future enhancements while preserving clean separation of concerns between rendering, logic, and user interaction.
-
-Key architectural strengths:
-- **Type-safe** piece and move representations
-- **Efficient** animation system with minimal re-renders  
-- **Scalable** algorithms that handle various cube sizes
-- **Maintainable** code structure with clear responsibilities
-- **Performant** 3D rendering optimized for smooth interactions
+This separation keeps the renderer dumb, the logic testable, and leaves a clean
+seam for adding solver algorithms against `CubeModel` / `CubeState3x3` later.
