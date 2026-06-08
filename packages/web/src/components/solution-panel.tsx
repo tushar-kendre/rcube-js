@@ -19,13 +19,16 @@ import {
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
 import { cn } from "@/lib/utils";
+import { getSolver, type SolveMethod } from "../solvers/registry";
 
 interface SolutionPanelProps {
   playback: SolutionPlayback;
   isBusy: boolean;
+  solveMethod: SolveMethod;
 }
 
-export function SolutionPanel({ playback, isBusy }: SolutionPanelProps) {
+export function SolutionPanel({ playback, isBusy, solveMethod }: SolutionPanelProps) {
+  const solver = getSolver(solveMethod);
   const {
     plan,
     mode,
@@ -59,8 +62,8 @@ export function SolutionPanel({ playback, isBusy }: SolutionPanelProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h3 className="font-semibold">Beginner Method</h3>
-          <p className="text-xs text-muted-foreground">Cross → F2L → OLL → PLL</p>
+          <h3 className="font-semibold">{solver.label}</h3>
+          <p className="text-xs text-muted-foreground">{solver.subtitle}</p>
         </div>
         <Button size="sm" variant="secondary" onClick={() => buildPlan()} disabled={isBusy}>
           Build plan

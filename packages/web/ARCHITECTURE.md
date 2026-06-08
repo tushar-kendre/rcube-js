@@ -17,8 +17,7 @@ app/     React controller hook that owns state and the animation queue
 App.tsx  wires the controller to the renderer and the control panel
 ```
 
-Solver algorithms are intentionally **not** part of the current codebase. The
-`cube/` module is designed so solvers can be layered on top later without
+Solver algorithms live in `solvers/` and operate on `CubeState3x3` without
 touching the renderer or UI.
 
 ---
@@ -179,5 +178,22 @@ each frame to label the currently visible faces.
 | Per animation frame        | O(1) ref mutation (no React re-render)   |
 | React re-render per move   | once, on commit                          |
 
-This separation keeps the renderer dumb, the logic testable, and leaves a clean
-seam for adding solver algorithms against `CubeModel` / `CubeState3x3` later.
+This separation keeps the renderer dumb, the logic testable, and solver
+algorithms isolated in `solvers/`.
+
+---
+
+## 5. `solvers/` — Beginner and CFOP methods
+
+Two solve methods are registered in `solvers/registry.ts`:
+
+| Method    | Pipeline                                      | Entry point        |
+| --------- | --------------------------------------------- | ------------------ |
+| Beginner  | Cross → corners → edge F2L → LL cross/edges/corners | `solveCube`   |
+| CFOP      | Cross → pair F2L → OLL (57) → PLL (21)        | `solveCubeCFOP`  |
+
+Shared utilities live in `solvers/common/` (`compress`, conjugated search).
+Tutorial playback uses `buildSolutionPlan(state, method)` for segmented plans.
+
+The Play tab exposes a **Solve method** selector; instant solve and Learn-tab
+plans both respect the chosen method.

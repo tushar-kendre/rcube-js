@@ -1,7 +1,46 @@
 import { COLOR_MAP, CubeFace, DEFAULT_CUBE_COLORS } from "@/types/cube-core";
+import { Face } from "@/cube/model/faces";
+import { cubeFaceAtWorld, IDENTITY, Mat3 } from "@/cube/moves/orientation";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useRef } from "react";
 import { Vector3 } from "three";
+
+/** HUD world-face name <-> canonical cube face. */
+const WORLD_TO_FACE: Record<CubeFace, Face> = {
+  top: "U",
+  bottom: "D",
+  left: "L",
+  right: "R",
+  front: "F",
+  back: "B",
+};
+const FACE_TO_WORLD: Record<Face, CubeFace> = {
+  U: "top",
+  D: "bottom",
+  L: "left",
+  R: "right",
+  F: "front",
+  B: "back",
+};
+
+const FACE_LABEL: Record<CubeFace, string> = {
+  front: "F",
+  back: "B",
+  right: "R",
+  left: "L",
+  top: "U",
+  bottom: "D",
+};
+
+/**
+ * The color currently shown on a world face: under the cube's orientation, the
+ * canonical face whose center sits there determines the sticker color. Labels
+ * stay position-anchored (top is always "U"); only colors move.
+ */
+function colorForWorldFace(orientation: Mat3, world: CubeFace): string {
+  const canonical = cubeFaceAtWorld(orientation, WORLD_TO_FACE[world]);
+  return COLOR_MAP[DEFAULT_CUBE_COLORS[FACE_TO_WORLD[canonical]]];
+}
 
 /**
  * Interface representing a visible face with its orientation info
@@ -19,6 +58,8 @@ interface VisibleFace {
  */
 interface CameraTrackerProps {
   onVisibleFacesUpdate: (faces: VisibleFace[]) => void;
+  /** Current whole-cube orientation, used to color faces live. */
+  orientation?: Mat3;
 }
 
 /**
@@ -29,13 +70,21 @@ interface FaceOrientationHUDProps {
   isAnimating?: boolean;
   /** List of currently visible faces */
   visibleFaces: VisibleFace[];
+  /** Current whole-cube orientation, used for the live color-per-face legend. */
+  orientation?: Mat3;
 }
+
+/** Position-anchored legend order: U/D, L/R, F/B. */
+const LEGEND_FACES: CubeFace[] = ["top", "bottom", "left", "right", "front", "back"];
 
 /**
  * Component that tracks camera position and calculates visible faces
  * Must be placed inside the Canvas component
  */
-export function CameraTracker({ onVisibleFacesUpdate }: CameraTrackerProps) {
+export function CameraTracker({
+  onVisibleFacesUpdate,
+  orientation = IDENTITY,
+}: CameraTrackerProps) {
   const { camera } = useThree();
   const frameCount = useRef(0);
 
@@ -106,22 +155,10 @@ export function CameraTracker({ onVisibleFacesUpdate }: CameraTrackerProps) {
           position = "center";
         }
         
-        // Get proper cube notation for face labels
-        const getFaceLabel = (face: CubeFace): string => {
-          switch (face) {
-            case "front": return "F";
-            case "back": return "B";
-            case "right": return "R";
-            case "left": return "L";
-            case "top": return "U"; // Up
-            case "bottom": return "D"; // Down
-          }
-        };
-        
         faces.push({
           face,
-          label: getFaceLabel(face),
-          color: COLOR_MAP[DEFAULT_CUBE_COLORS[face]],
+          label: FACE_LABEL[face],
+          color: colorForWorldFace(orientation, face),
           position,
           opacity,
         });
@@ -147,7 +184,11 @@ export function CameraTracker({ onVisibleFacesUpdate }: CameraTrackerProps) {
  * HUD component that displays face orientation information
  * Must be placed outside the Canvas component
  */
-export function FaceOrientationHUD({ isAnimating = false, visibleFaces }: FaceOrientationHUDProps) {
+export function FaceOrientationHUD({
+  isAnimating = false,
+  visibleFaces,
+  orientation = IDENTITY,
+}: FaceOrientationHUDProps) {
   // Don't show HUD during sequence execution to avoid distraction
   if (isAnimating) {
     return null;
@@ -230,27 +271,19 @@ export function FaceOrientationHUD({ isAnimating = false, visibleFaces }: FaceOr
           );
         })}
 
-      {/* Face legend in bottom-left corner */}
+      {/* Live face legend (color currently on each position-anchored face). */}
       <div className="absolute bottom-4 left-4 bg-card/80 backdrop-blur-sm rounded-lg p-3 border border-border">
         <h4 className="text-foreground text-xs font-semibold mb-2 opacity-80">Cube Faces</h4>
         <div className="grid grid-cols-2 gap-1 text-xs">
-          {Object.entries(DEFAULT_CUBE_COLORS).map(([face, color]) => {
-            const notation = face === "front" ? "F" : 
-                           face === "back" ? "B" : 
-                           face === "right" ? "R" : 
-                           face === "left" ? "L" : 
-                           face === "top" ? "U" : 
-                           face === "bottom" ? "D" : face[0].toUpperCase();
-            return (
-              <div key={face} className="flex items-center gap-1.5">
-                <div
-                  className="w-3 h-3 rounded-sm border border-border"
-                  style={{ backgroundColor: COLOR_MAP[color] }}
-                />
-                <span className="text-muted-foreground capitalize">{notation}</span>
-              </div>
-            );
-          })}
+          {LEGEND_FACES.map((face) => (
+            <div key={face} className="flex items-center gap-1.5">
+              <div
+                className="w-3 h-3 rounded-sm border border-border"
+                style={{ backgroundColor: colorForWorldFace(orientation, face) }}
+              />
+              <span className="text-muted-foreground">{FACE_LABEL[face]}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

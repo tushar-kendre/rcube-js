@@ -41,3 +41,18 @@ export {
   type SolutionSegment,
   type SolutionStageId,
 } from "./plan";
+export { solveCubeCFOP } from "./cfop/solve";
+export {
+  getSolver,
+  SOLVE_METHODS,
+  type SolveMethod,
+  type SolverMethod,
+} from "./registry";
+export {
+  benchmarkMethods,
+  countMovesByMethod,
+  formatBenchmarkSummary,
+  type MethodBenchmarkResult,
+  type MethodStats,
+  type TrialComparison,
+} from "./benchmark";

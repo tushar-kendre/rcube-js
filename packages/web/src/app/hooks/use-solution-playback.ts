@@ -9,6 +9,7 @@ import {
   locateInPlan,
   SolutionPlan,
 } from "../../solvers/plan";
+import { getSolver, SolveMethod } from "../../solvers/registry";
 import type { CubeController } from "./use-cube-controller";
 
 export type PlaybackMode = "idle" | "playing" | "paused";
@@ -42,8 +43,11 @@ function resetPlaybackRefs(refs: {
   refs.prevBusy.current = false;
 }
 
-/** Tutorial playback over a segmented beginner-method plan. */
-export function useSolutionPlayback(controller: CubeController): SolutionPlayback {
+/** Tutorial playback over a segmented solution plan. */
+export function useSolutionPlayback(
+  controller: CubeController,
+  solveMethod: SolveMethod = "beginner",
+): SolutionPlayback {
   const [plan, setPlan] = useState<SolutionPlan | null>(null);
   const [mode, setMode] = useState<PlaybackMode>("idle");
   const [globalMoveIndex, setGlobalMoveIndex] = useState(0);
@@ -108,7 +112,7 @@ export function useSolutionPlayback(controller: CubeController): SolutionPlaybac
       toast.error("Tutorial playback requires a 3×3 cube.");
       return null;
     }
-    const p = buildSolutionPlan(state);
+    const p = buildSolutionPlan(state, solveMethod);
     setPlan(p);
     rebuildSnapshots(p, state);
     controller.loadState(state);
@@ -119,9 +123,11 @@ export function useSolutionPlayback(controller: CubeController): SolutionPlaybac
       stepPending: stepPendingRef,
       prevBusy: prevBusyRef,
     });
-    toast.success(`Plan built — ${p.totalMoves} moves in ${p.segments.length} stages.`);
+    toast.success(
+      `${getSolver(solveMethod).label} plan — ${p.totalMoves} moves in ${p.segments.length} stages.`,
+    );
     return p;
-  }, [controller, rebuildSnapshots]);
+  }, [controller, rebuildSnapshots, solveMethod]);
 
   const play = useCallback(() => {
     if (!plan) return;

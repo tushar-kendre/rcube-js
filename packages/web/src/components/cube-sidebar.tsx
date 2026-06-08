@@ -10,9 +10,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { type SolveMethod } from "../solvers/registry";
 
 interface CubeSidebarProps extends CubeController {
   playback: SolutionPlayback;
+  solveMethod: SolveMethod;
+  onSolveMethodChange: (method: SolveMethod) => void;
 }
 
 function SidebarTabs({
@@ -21,12 +24,16 @@ function SidebarTabs({
   activeTab,
   onTabChange,
   onTutorialStart,
+  solveMethod,
+  onSolveMethodChange,
 }: {
   controller: CubeController;
   playback: SolutionPlayback;
   activeTab: string;
   onTabChange: (tab: string) => void;
   onTutorialStart: () => void;
+  solveMethod: SolveMethod;
+  onSolveMethodChange: (method: SolveMethod) => void;
 }) {
   const {
     isBusy,
@@ -64,6 +71,8 @@ function SidebarTabs({
           size={size}
           onSizeChange={setSize}
           onTutorialStart={onTutorialStart}
+          solveMethod={solveMethod}
+          onSolveMethodChange={onSolveMethodChange}
         />
       </TabsContent>
 
@@ -77,7 +86,7 @@ function SidebarTabs({
       </TabsContent>
 
       <TabsContent value="learn" className="mt-4 flex-1 overflow-y-auto">
-        <SolutionPanel playback={playback} isBusy={isBusy} />
+        <SolutionPanel playback={playback} isBusy={isBusy} solveMethod={solveMethod} />
       </TabsContent>
     </Tabs>
   );
@@ -101,6 +110,8 @@ export function CubeSidebar(props: CubeSidebarProps) {
       activeTab={activeTab}
       onTabChange={setActiveTab}
       onTutorialStart={handleTutorialStart}
+      solveMethod={props.solveMethod}
+      onSolveMethodChange={props.onSolveMethodChange}
     />
   );
 

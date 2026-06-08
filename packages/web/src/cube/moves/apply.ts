@@ -36,6 +36,11 @@ function applyTable(state: CubeState3x3, table: MoveTable): CubeState3x3 {
  * Only outer-layer moves (layer 1) are valid for the canonical 3x3 model.
  */
 export function applyMove(state: CubeState3x3, move: Move): CubeState3x3 {
+  if (move.kind && move.kind !== "face") {
+    throw new Error(
+      `applyMove handles only outer face moves; "${move.kind}" moves are resolved by the model`,
+    );
+  }
   if (move.layer !== 1) {
     throw new Error(
       `The canonical 3x3 model only supports outer-layer moves, got layer ${move.layer}`,

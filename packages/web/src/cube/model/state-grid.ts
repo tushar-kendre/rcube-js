@@ -85,33 +85,35 @@ const FACE_CYCLE: Record<Move["face"], Partial<Record<CubeFace, CubeFace>>> = {
   B: { top: "left", left: "bottom", bottom: "right", right: "top" },
 };
 
-function layerIndexFor(move: Move, size: number): number {
-  const depth = move.layer - 1;
-  switch (move.face) {
-    case "R":
-    case "U":
-    case "F":
-      return size - 1 - depth;
-    case "L":
-    case "D":
-    case "B":
-      return depth;
-  }
+function axisIndex(face: Move["face"]): 0 | 1 | 2 {
+  if (face === "R" || face === "L") return 0;
+  if (face === "U" || face === "D") return 1;
+  return 2;
 }
 
-function isAffected(move: Move, pos: [number, number, number], size: number): boolean {
-  const layerIndex = layerIndexFor(move, size);
-  switch (move.face) {
-    case "R":
-    case "L":
-      return pos[0] === layerIndex;
-    case "U":
-    case "D":
-      return pos[1] === layerIndex;
-    case "F":
-    case "B":
-      return pos[2] === layerIndex;
+/**
+ * The rotation reference face and affected layer indices for any move kind.
+ * Wide turns a range of layers, slice the middle layer, rotation every layer,
+ * each spinning in the direction of its reference face.
+ */
+function moveLayers(move: Move, size: number): { face: Move["face"]; layers: Set<number> } {
+  const max = size - 1;
+  const positive = move.face === "R" || move.face === "U" || move.face === "F";
+  const kind = move.kind ?? "face";
+
+  if (kind === "rotation") {
+    return { face: move.face, layers: new Set(Array.from({ length: size }, (_, i) => i)) };
   }
+  if (kind === "slice") {
+    return { face: move.face, layers: new Set([Math.floor(max / 2)]) };
+  }
+  if (kind === "wide") {
+    const width = Math.min(move.width ?? 2, size);
+    const layers = Array.from({ length: width }, (_, d) => (positive ? max - d : d));
+    return { face: move.face, layers: new Set(layers) };
+  }
+  const depth = move.layer - 1;
+  return { face: move.face, layers: new Set([positive ? max - depth : depth]) };
 }
 
 function rotateCubieCW(cubie: GridCubie, face: Move["face"], max: number): GridCubie {
@@ -128,16 +130,18 @@ function rotateCubieCW(cubie: GridCubie, face: Move["face"], max: number): GridC
   return { id: cubie.id, position, stickers };
 }
 
-/** Applies a move to a grid state, returning a new state. */
+/** Applies a move (face, wide, slice, or rotation) to a grid state. */
 export function applyGridMove(state: GridCubeState, move: Move): GridCubeState {
   const { size } = state;
   const max = size - 1;
   const turns = move.amount; // number of clockwise quarter turns
+  const { face, layers } = moveLayers(move, size);
+  const axis = axisIndex(face);
 
   let cubies = state.cubies;
   for (let turn = 0; turn < turns; turn++) {
     cubies = cubies.map((cubie) =>
-      isAffected(move, cubie.position, size) ? rotateCubieCW(cubie, move.face, max) : cubie,
+      layers.has(cubie.position[axis]) ? rotateCubieCW(cubie, face, max) : cubie,
     );
   }
 

@@ -27,11 +27,11 @@ export interface VisualCubieState {
 export type Axis = "x" | "y" | "z";
 
 export interface MoveGeometry {
-  /** Rotation axis of the affected layer. */
+  /** Rotation axis of the affected layer(s). */
   axis: Axis;
   /** Signed target angle in radians for the animation. */
   angle: number;
-  /** Predicate selecting cubies in the rotating layer by grid position. */
+  /** Predicate selecting cubies in the rotating layer(s) by grid position. */
   isAffected: (gridPosition: [number, number, number]) => boolean;
 }
 
@@ -55,52 +55,53 @@ const FACE_SIGN: Record<Move["face"], number> = {
   B: -1,
 };
 
+function coord(axis: Axis, pos: [number, number, number]): number {
+  return axis === "x" ? pos[0] : axis === "y" ? pos[1] : pos[2];
+}
+
 /**
  * Computes the rotation axis, signed angle, and affected-layer predicate for a
  * move on a cube of the given size.
+ *
+ * The move's `face` is expected in canonical/local terms (callers remap a
+ * screen-space move through the cube orientation first). `wide` selects a range
+ * of layers from the face inward, `slice` selects the middle layer, and
+ * `rotation` selects every layer.
  */
 export function getMoveGeometry(move: Move, size: number): MoveGeometry {
   const axis = FACE_AXIS[move.face];
-  const max = size - 1;
-  const layerIndex = layerIndexFor(move, size);
 
-  // Clockwise quarter turn is -90 degrees in this coordinate convention; prime
-  // is +90; a half turn animates -180.
   const magnitude = move.amount === 2 ? Math.PI : Math.PI / 2;
   const direction = move.amount === 3 ? 1 : -1;
   const angle = FACE_SIGN[move.face] * direction * magnitude;
 
+  const layers = affectedLayers(move, size);
+  const set = new Set(layers);
+
   return {
     axis,
     angle,
-    isAffected: ([x, y, z]) => {
-      switch (axis) {
-        case "x":
-          return x === layerIndex;
-        case "y":
-          return y === layerIndex;
-        case "z":
-          return z === layerIndex;
-      }
-    },
+    isAffected: (pos) => set.has(coord(axis, pos)),
   };
 
-  function layerIndexFor(m: Move, s: number): number {
-    const depth = m.layer - 1;
-    switch (m.face) {
-      case "R":
-        return s - 1 - depth;
-      case "L":
-        return depth;
-      case "U":
-        return s - 1 - depth;
-      case "D":
-        return depth;
-      case "F":
-        return s - 1 - depth;
-      case "B":
-        return depth;
+  function affectedLayers(m: Move, s: number): number[] {
+    const positive = m.face === "R" || m.face === "U" || m.face === "F";
+    const kind = m.kind ?? "face";
+
+    if (kind === "rotation") {
+      return Array.from({ length: s }, (_, i) => i);
     }
-    return max;
+
+    if (kind === "slice") {
+      return [Math.floor((s - 1) / 2)];
+    }
+
+    if (kind === "wide") {
+      const width = Math.min(m.width ?? 2, s);
+      return Array.from({ length: width }, (_, d) => (positive ? s - 1 - d : d));
+    }
+
+    const depth = m.layer - 1;
+    return [positive ? s - 1 - depth : depth];
   }
 }

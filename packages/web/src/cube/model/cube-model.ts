@@ -7,7 +7,8 @@
  */
 
 import { Move } from "../moves/notation";
-import { applyMove, applyMoves } from "../moves/apply";
+import { Mat3, IDENTITY } from "../moves/orientation";
+import { applyOrientedMove } from "../moves/resolve";
 import {
   CubeState3x3,
   createSolvedState,
@@ -31,12 +32,17 @@ export interface CubeModel {
   toVisual(): VisualCubieState;
   /** Canonical state, available only for 3x3 (used by solvers). */
   readonly canonicalState: CubeState3x3 | null;
+  /** Whole-cube orientation; identity for cubes that move cubies directly. */
+  readonly orientation: Mat3;
 }
 
 class Cube3x3Model implements CubeModel {
   readonly size = 3;
 
-  constructor(private readonly state: CubeState3x3) {}
+  constructor(
+    private readonly state: CubeState3x3,
+    readonly orientation: Mat3 = IDENTITY,
+  ) {}
 
   get canonicalState(): CubeState3x3 {
     return this.state;
@@ -47,11 +53,14 @@ class Cube3x3Model implements CubeModel {
   }
 
   applyMove(move: Move): CubeModel {
-    return new Cube3x3Model(applyMove(this.state, move));
+    const next = applyOrientedMove({ state: this.state, orientation: this.orientation }, move);
+    return new Cube3x3Model(next.state, next.orientation);
   }
 
   applySequence(moves: Move[]): CubeModel {
-    return new Cube3x3Model(applyMoves(this.state, moves));
+    let os = { state: this.state, orientation: this.orientation };
+    for (const move of moves) os = applyOrientedMove(os, move);
+    return new Cube3x3Model(os.state, os.orientation);
   }
 
   toVisual(): VisualCubieState {
@@ -61,6 +70,7 @@ class Cube3x3Model implements CubeModel {
 
 class GridCubeModel implements CubeModel {
   readonly canonicalState = null;
+  readonly orientation = IDENTITY;
 
   constructor(private readonly state: GridCubeState) {}
 

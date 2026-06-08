@@ -4,6 +4,7 @@ import { useSolutionPlayback } from "./app/hooks/use-solution-playback";
 import { CameraTracker, FaceOrientationHUD } from "./components/face-orientation-hud";
 import { Header } from "./components/header";
 import { CubeFace } from "./types/cube-core";
+import type { SolveMethod } from "./solvers/registry";
 
 const Canvas = lazy(() =>
   import("@react-three/fiber").then((m) => ({ default: m.Canvas })),
@@ -31,11 +32,13 @@ interface VisibleFace {
 
 function App() {
   const [visibleFaces, setVisibleFaces] = useState<VisibleFace[]>([]);
-  const controller = useCubeController({ initialSize: 3, durationMs: 300 });
-  const playback = useSolutionPlayback(controller);
+  const [solveMethod, setSolveMethod] = useState<SolveMethod>("beginner");
+  const controller = useCubeController({ initialSize: 3, durationMs: 300, solveMethod });
+  const playback = useSolutionPlayback(controller, solveMethod);
 
   const {
     visual,
+    orientation,
     animation,
     isBusy,
     isAnimating,
@@ -47,7 +50,11 @@ function App() {
       <Header />
       <div className="flex h-[calc(100vh-60px)] gap-4 p-4">
         <div className="relative min-w-0 flex-1">
-          <FaceOrientationHUD isAnimating={isBusy} visibleFaces={visibleFaces} />
+          <FaceOrientationHUD
+            isAnimating={isBusy}
+            visibleFaces={visibleFaces}
+            orientation={orientation}
+          />
 
           <Suspense
             fallback={
@@ -63,9 +70,13 @@ function App() {
               camera={{ position: [8, 8, 8], fov: 50 }}
               className="rounded-lg bg-gradient-to-br from-background to-muted"
             >
-              <CameraTracker onVisibleFacesUpdate={setVisibleFaces} />
+              <CameraTracker
+                onVisibleFacesUpdate={setVisibleFaces}
+                orientation={orientation}
+              />
               <RubiksCube
                 visual={visual}
+                orientation={orientation}
                 animation={animation}
                 onAnimationComplete={onAnimationComplete}
               />
@@ -94,7 +105,12 @@ function App() {
             </div>
           }
         >
-          <CubeSidebar {...controller} playback={playback} />
+          <CubeSidebar
+            {...controller}
+            playback={playback}
+            solveMethod={solveMethod}
+            onSolveMethodChange={setSolveMethod}
+          />
         </Suspense>
       </div>
     </>

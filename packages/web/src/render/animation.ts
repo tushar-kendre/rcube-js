@@ -16,6 +16,11 @@ export interface AnimationDescriptor {
   angle: number;
   /** Animation duration in milliseconds. */
   durationMs: number;
+  /**
+   * Whole-cube rotation (x/y/z): the entire cube spins about a world axis and
+   * the committed orientation advances on completion, rather than a layer pivot.
+   */
+  wholeCube?: boolean;
 }
 
 /** Smooth ease-out used for layer rotations. */

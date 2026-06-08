@@ -29,10 +29,10 @@ function randomMoves(count: number): Move[] {
 
 describe("notation", () => {
   it("parses and formats single moves", () => {
-    expect(parseMove("R")).toEqual({ face: "R", layer: 1, amount: 1 });
-    expect(parseMove("R'")).toEqual({ face: "R", layer: 1, amount: 3 });
-    expect(parseMove("R2")).toEqual({ face: "R", layer: 1, amount: 2 });
-    expect(parseMove("3U'")).toEqual({ face: "U", layer: 3, amount: 3 });
+    expect(parseMove("R")).toEqual({ kind: "face", face: "R", layer: 1, amount: 1 });
+    expect(parseMove("R'")).toEqual({ kind: "face", face: "R", layer: 1, amount: 3 });
+    expect(parseMove("R2")).toEqual({ kind: "face", face: "R", layer: 1, amount: 2 });
+    expect(parseMove("3U'")).toEqual({ kind: "face", face: "U", layer: 3, amount: 3 });
     expect(formatMove({ face: "U", layer: 1, amount: 3 })).toBe("U'");
     expect(formatMove({ face: "R", layer: 2, amount: 2 })).toBe("2R2");
   });

@@ -9,6 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "./ui/tooltip";
+import { getSolver, SOLVE_METHODS, type SolveMethod } from "../solvers/registry";
 
 interface CubeControlsProps {
   isBusy: boolean;
@@ -22,6 +23,8 @@ interface CubeControlsProps {
   size: number;
   onSizeChange: (size: number) => void;
   onTutorialStart?: () => void;
+  solveMethod: SolveMethod;
+  onSolveMethodChange: (method: SolveMethod) => void;
 }
 
 const baseFaces = ["R", "L", "U", "D", "F", "B"];
@@ -41,6 +44,18 @@ function movesForSize(size: number): string[] {
   return moves;
 }
 
+/** Wide, slice, and rotation moves available for the current cube size. */
+function fancyMovesForSize(size: number): string[] {
+  const moves: string[] = ["x", "x'", "y", "y'", "z", "z'"];
+  if (size % 2 === 1) {
+    moves.push("M", "M'", "E", "E'", "S", "S'");
+  }
+  if (size >= 3) {
+    baseFaces.forEach((face) => moves.push(`${face}w`, `${face}w'`));
+  }
+  return moves;
+}
+
 export default function CubeControls({
   isBusy,
   executeMove,
@@ -53,7 +68,10 @@ export default function CubeControls({
   size,
   onSizeChange,
   onTutorialStart,
+  solveMethod,
+  onSolveMethodChange,
 }: CubeControlsProps) {
+  const solver = getSolver(solveMethod);
   const [customSeq, setCustomSeq] = useState("");
   const [scrambleLen, setScrambleLen] = useState(20);
   const [inputSize, setInputSize] = useState(size.toString());
@@ -73,6 +91,7 @@ export default function CubeControls({
   };
 
   const moves = movesForSize(size);
+  const fancyMoves = fancyMovesForSize(size);
   const gridCols =
     moves.length > 18 ? "grid-cols-6" : moves.length > 12 ? "grid-cols-5" : "grid-cols-4";
 
@@ -126,6 +145,30 @@ export default function CubeControls({
           ))}
         </div>
 
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">
+            Rotations / slices / wide moves
+          </Label>
+          <div className="grid grid-cols-6 gap-1.5">
+            {fancyMoves.map((m) => (
+              <Tooltip key={m}>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs px-1"
+                    onClick={() => executeMove(m)}
+                    disabled={isBusy}
+                  >
+                    {m}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{m}</TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+        </div>
+
         <Separator />
 
         <div className="space-y-2">
@@ -172,12 +215,29 @@ export default function CubeControls({
         <div className="space-y-2">
           {canSolve && (
             <>
+              <div className="space-y-1.5">
+                <Label htmlFor="solve-method">Solve method</Label>
+                <select
+                  id="solve-method"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={solveMethod}
+                  onChange={(e) => onSolveMethodChange(e.target.value as SolveMethod)}
+                  disabled={isBusy}
+                >
+                  {SOLVE_METHODS.map((id) => (
+                    <option key={id} value={id}>
+                      {getSolver(id).label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">{solver.subtitle}</p>
+              </div>
               <Button
                 className="w-full font-semibold"
                 onClick={solveCube}
                 disabled={isBusy}
               >
-                Solve cube
+                Solve cube ({solver.label})
               </Button>
               {onTutorialStart && (
                 <Button
