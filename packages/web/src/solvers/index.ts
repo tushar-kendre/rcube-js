@@ -35,6 +35,7 @@ export {
 } from "./beginner/last-layer-corners";
 export {
   buildSolutionPlan,
+  buildPocketPlan,
   flattenPlan,
   locateInPlan,
   type SolutionPlan,
@@ -42,6 +43,8 @@ export {
   type SolutionStageId,
 } from "./plan";
 export { solveCubeCFOP } from "./cfop/solve";
+export { solveKociemba, solveKociembaPhases, inG1 } from "./kociemba/solve";
+export { solvePocket, isPocketSolved } from "./pocket/solve";
 export {
   getSolver,
   SOLVE_METHODS,

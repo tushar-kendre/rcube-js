@@ -17,6 +17,7 @@ import {
 import { remapMove } from "../../cube/moves/resolve";
 import { AnimationDescriptor } from "../../render/animation";
 import { getSolver, SolveMethod } from "../../solvers/registry";
+import { solvePocket } from "../../solvers/pocket/solve";
 
 interface UseCubeControllerOptions {
   initialSize?: number;
@@ -260,6 +261,14 @@ export function useCubeController({
   );
 
   const solveCubeAction = useCallback(() => {
+    const grid = modelRef.current.gridState;
+    if (grid && grid.size === 2) {
+      const solution = solvePocket(grid).map(formatMove);
+      enqueue(parseTokens(solution));
+      toast.info(`Optimal solve queued (${solution.length} moves).`);
+      return;
+    }
+
     const canonical = modelRef.current.canonicalState;
     if (!canonical) return;
     const solver = getSolver(solveMethod);
@@ -333,7 +342,7 @@ export function useCubeController({
     executeMoves,
     scramble,
     solveCube: solveCubeAction,
-    canSolve: size === 3,
+    canSolve: size === 2 || size === 3,
     reset,
     stop,
     setSize,

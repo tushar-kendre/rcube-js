@@ -34,6 +34,10 @@ describe("method move-count comparison", () => {
     expect(result.perTrial).toHaveLength(50);
     expect(result.byMethod.beginner.avg).toBeGreaterThan(0);
     expect(result.byMethod.cfop.avg).toBeGreaterThan(0);
+    expect(result.byMethod.kociemba.avg).toBeGreaterThan(0);
+    // Kociemba is near-optimal: well under CFOP and the beginner method.
+    expect(result.byMethod.kociemba.avg).toBeLessThan(result.byMethod.cfop.avg);
+    expect(result.byMethod.kociemba.max).toBeLessThanOrEqual(25);
     expect(result.cfopFewerCount + result.beginnerFewerCount + result.tieCount).toBe(50);
 
     for (const row of result.perTrial) {

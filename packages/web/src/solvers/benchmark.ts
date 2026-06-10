@@ -111,8 +111,8 @@ export function benchmarkMethods(options: BenchmarkOptions = {}): MethodBenchmar
       return list;
     })();
 
-  const beginnerCounts: number[] = [];
-  const cfopCounts: number[] = [];
+  const countsByMethod = {} as Record<SolveMethod, number[]>;
+  for (const method of SOLVE_METHODS) countsByMethod[method] = [];
   const perTrial: TrialComparison[] = [];
   let cfopFewerCount = 0;
   let beginnerFewerCount = 0;
@@ -126,13 +126,11 @@ export function benchmarkMethods(options: BenchmarkOptions = {}): MethodBenchmar
       if (!isSolved(result)) {
         throw new Error(`${method} failed to solve trial state`);
       }
+      countsByMethod[method].push(solutions[method].length);
     }
 
     const beginner = solutions.beginner.length;
     const cfop = solutions.cfop.length;
-
-    beginnerCounts.push(beginner);
-    cfopCounts.push(cfop);
     perTrial.push({ beginner, cfop, delta: beginner - cfop });
 
     if (cfop < beginner) cfopFewerCount++;
@@ -140,12 +138,12 @@ export function benchmarkMethods(options: BenchmarkOptions = {}): MethodBenchmar
     else tieCount++;
   }
 
+  const byMethod = {} as Record<SolveMethod, MethodStats>;
+  for (const method of SOLVE_METHODS) byMethod[method] = stats(countsByMethod[method]);
+
   return {
     trialCount: states.length,
-    byMethod: {
-      beginner: stats(beginnerCounts),
-      cfop: stats(cfopCounts),
-    },
+    byMethod,
     perTrial,
     cfopFewerCount,
     beginnerFewerCount,
@@ -157,12 +155,14 @@ export function benchmarkMethods(options: BenchmarkOptions = {}): MethodBenchmar
 export function formatBenchmarkSummary(result: MethodBenchmarkResult): string {
   const b = result.byMethod.beginner;
   const c = result.byMethod.cfop;
+  const k = result.byMethod.kociemba;
   const n = result.trialCount;
   const saved = b.avg - c.avg;
   return [
     `Method comparison (${n} identical scrambles)`,
     `  Beginner: avg ${b.avg.toFixed(1)} moves (min ${b.min}, max ${b.max})`,
     `  CFOP:     avg ${c.avg.toFixed(1)} moves (min ${c.min}, max ${c.max})`,
+    `  Kociemba: avg ${k.avg.toFixed(1)} moves (min ${k.min}, max ${k.max})`,
     `  CFOP saves avg ${saved.toFixed(1)} moves vs beginner`,
     `  CFOP shorter: ${result.cfopFewerCount}/${n}, beginner shorter: ${result.beginnerFewerCount}/${n}, tie: ${result.tieCount}/${n}`,
   ].join("\n");

@@ -32,6 +32,8 @@ export interface CubeModel {
   toVisual(): VisualCubieState;
   /** Canonical state, available only for 3x3 (used by solvers). */
   readonly canonicalState: CubeState3x3 | null;
+  /** Grid state, available only for non-3x3 sizes (used by grid solvers). */
+  readonly gridState: GridCubeState | null;
   /** Whole-cube orientation; identity for cubes that move cubies directly. */
   readonly orientation: Mat3;
 }
@@ -47,6 +49,8 @@ class Cube3x3Model implements CubeModel {
   get canonicalState(): CubeState3x3 {
     return this.state;
   }
+
+  readonly gridState = null;
 
   isSolved(): boolean {
     return isSolved3x3(this.state);
@@ -73,6 +77,10 @@ class GridCubeModel implements CubeModel {
   readonly orientation = IDENTITY;
 
   constructor(private readonly state: GridCubeState) {}
+
+  get gridState(): GridCubeState {
+    return this.state;
+  }
 
   get size(): number {
     return this.state.size;

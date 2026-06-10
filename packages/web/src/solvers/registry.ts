@@ -3,8 +3,9 @@ import { Move } from "../cube/moves/notation";
 import { solveCube } from "./beginner/last-layer-corners";
 import { buildSolutionPlan, SolutionPlan } from "./plan";
 import { solveCubeCFOP } from "./cfop/solve";
+import { solveKociemba } from "./kociemba/solve";
 
-export type SolveMethod = "beginner" | "cfop";
+export type SolveMethod = "beginner" | "cfop" | "kociemba";
 
 export interface SolverMethod {
   id: SolveMethod;
@@ -30,15 +31,24 @@ const CFOP: SolverMethod = {
   buildPlan: (state) => buildSolutionPlan(state, "cfop"),
 };
 
+const KOCIEMBA: SolverMethod = {
+  id: "kociemba",
+  label: "Kociemba",
+  subtitle: "Two-phase near-optimal solver (~20 moves)",
+  solve: solveKociemba,
+  buildPlan: (state) => buildSolutionPlan(state, "kociemba"),
+};
+
 const SOLVERS: Record<SolveMethod, SolverMethod> = {
   beginner: BEGINNER,
   cfop: CFOP,
+  kociemba: KOCIEMBA,
 };
 
 export function getSolver(method: SolveMethod): SolverMethod {
   return SOLVERS[method];
 }
 
-export const SOLVE_METHODS: SolveMethod[] = ["beginner", "cfop"];
+export const SOLVE_METHODS: SolveMethod[] = ["beginner", "cfop", "kociemba"];
 
-export { BEGINNER, CFOP };
+export { BEGINNER, CFOP, KOCIEMBA };
